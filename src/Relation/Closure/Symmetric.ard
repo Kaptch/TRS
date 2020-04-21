@@ -1,0 +1,46 @@
+\import Relation.Core
+
+\truncated \data SC {A : \Set}
+                    (rel : relation A)
+                    (a b : A)
+: \Prop
+  | base (r : rel a b)
+  | flip (r : SC rel b a)
+
+\func symmetricClosure {A : \Set}
+                       (rel : relation A)
+  : closure rel symmetric constructor =>
+  (constructor rel,
+   _symmetric rel,
+   idp,
+   _inclusion rel)
+  \where {
+    \func constructor {A : \Set}
+                      (r : relation A)
+      : relation A =>
+      SC r
+
+    \func _symmetric {A : \Set}
+                     (r : relation A)
+      : symmetric (constructor r) =>
+      \lam (x y : A) => flip
+
+    \func _inclusion {A : \Set}
+                     (rel : relation A)
+                     (p : relation A)
+                     (i1 : inclusion rel p)
+                     (pr : symmetric p)
+      : inclusion (constructor rel) p
+      | rel, p, i1, pr => _help rel p i1 pr
+      \where
+        \func _help {A : \Set}
+                    (rel : relation A)
+                    (p : relation A)
+                    (i1 : inclusion rel p)
+                    (pr : symmetric p)
+                    (x y : A)
+                    (r : SC rel x y)
+          : p x y
+          | rel, p, i1, pr, x, y, base r => i1 x y r
+          | rel, p, i1, pr, x, y, flip r => pr y x (_help rel p i1 pr y x r)
+  }

@@ -1,0 +1,45 @@
+\import Relation.Core
+\import Paths
+
+\truncated \data RC {A : \Set}
+                    (rel : relation A)
+                    (a b : A)
+: \Prop
+  | base (r : rel a b)
+  | refl (r : a = b)
+
+\func reflexiveClosure {A : \Set}
+                       (rel : relation A)
+  : closure rel reflexive constructor =>
+  (constructor rel,
+   _reflexive rel,
+   idp,
+   _inclusion rel)
+  \where {
+    \func constructor {A : \Set}
+                      (r : relation A)
+      : relation A =>
+      RC r
+
+    \func _reflexive {A : \Set}
+                     (r : relation A)
+      : reflexive (constructor r) =>
+      \lam _ => refl idp
+
+    \func _inclusion {A : \Set}
+                     (rel : relation A)
+                     (p : relation A)
+                     (i1 : inclusion rel p)
+                     (pr : reflexive p)
+      : inclusion (constructor rel) p
+      | rel, p, i1, pr =>
+        \lam x y =>
+            \lam u =>
+                \case u \with {
+                  | base r => i1 x y r
+                  | refl r => coe2 (@ (pmap2 p idp r))
+                                   left
+                                   (pr x)
+                                   right
+                }
+  }

@@ -1,0 +1,6 @@
+\import Set
+
+\record Signature {
+  | symbol : DecSet
+  | arity : symbol -> Nat
+}

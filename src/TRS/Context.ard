@@ -1,0 +1,59 @@
+\import TRS.Signature
+\import TRS.Term
+\import Data.Vector
+\import Paths
+\import Logic
+\open Nat
+
+\data Context (S : Signature) (V : \Set)
+  | Hole
+  | Cont (f : S.symbol)
+         (i j : Nat)
+         (p : i + suc(j) = S.arity f)
+         (t1 : Vector i (Term S V))
+         (c : Context S V)
+         (t2 : Vector j (Term S V))
+
+\func fill {S : Signature}
+           {V : \Set}
+           (c : Context S V)
+           (t : Term S V)
+  : Term S V
+  | Hole, t => t
+  | Cont f i j p t1 c t2, t =>
+    \let
+      | filled => fill c t
+      | v' => Cons filled t2 -- is it possible to check that we perform a recursive call instead of 'Cons t t2'?
+      | v'' => concat t1 v'
+    \in Fun f (transport (\lam k => Vector k _) p v'')
+
+\func composition {S : Signature}
+                  {V : \Set}
+                  (c1 : Context S V)
+                  (c2 : Context S V)
+  : Context S V
+  | Hole, c => c
+  | Cont f i j p t1 c1 t2, c2 => Cont f i j p t1 (composition c1 c2) t2
+
+\func subterm {S : Signature}
+              {V : \Set}
+              (t : Term S V)
+              (t1 : Term S V)
+  : \Prop =>
+  TruncP (\Sigma (c : Context S V)
+                 (t = fill c t1))
+
+\func trivial_subterm {S : Signature}
+                      {V : \Set}
+                      (t : Term S V)
+  : subterm t t =>
+  inP (Hole, idp)
+
+\func proper_subterm {S : Signature}
+                     {V : \Set}
+                     (t : Term S V)
+                     (t1 : Term S V)
+  : \Prop =>
+  TruncP (\Sigma (c : Context S V)
+                 (Not (c = Hole))
+                 (t = fill c t1))

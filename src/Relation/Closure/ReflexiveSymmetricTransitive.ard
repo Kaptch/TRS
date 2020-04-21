@@ -1,0 +1,82 @@
+\import Relation.Core
+\import Paths
+
+\truncated \data RSTC {A : \Set}
+                      (rel : relation A)
+                      (a b : A)
+: \Prop
+  | refl (p : a = b)
+  | fwd (r : rel a b)
+  | bwd (r : rel b a)
+  | fwdc {q : A} (t : rel a q) (r : RSTC rel q b)
+  | bwdc {q : A} (t : rel q a) (r : RSTC rel q b)
+
+\func reflexiveSymmetricTransitiveClosure {A : \Set}
+                                          (rel : relation A)
+  : closure rel
+            (\lam (r : relation A) => \Sigma (transitive r) (reflexive r) (symmetric r))
+            constructor =>
+  (constructor rel,
+   (_transitive rel, _reflexive rel, _symmetric rel),
+   idp,
+   _inclusion rel)
+  \where {
+    \func constructor {A : \Set}
+                      (r : relation A)
+      : relation A =>
+      RSTC r
+
+    \func _transitive {A : \Set}
+                      (r : relation A)
+                      (x y z : A)
+                      (p1 : constructor r x y)
+                      (p2 : constructor r y z)
+      : constructor r x z => concat r x y z p1 p2
+
+    \func _reflexive {A : \Set} (r : relation A)
+      : \Pi (x : A) ->
+        (constructor r) x x =>
+      \lam (x : A) => refl idp
+
+    \func _symmetric {A : \Set} (r : relation A)
+                     (x y : A)
+                     (p : (constructor r) x y)
+      : (constructor r) y x
+      | rel, x, y, refl p => refl (inv p)
+      | rel, x, y, fwd r => bwd r
+      | rel, x, y, bwd r => fwd r
+      | rel, x, y, fwdc t r => concat rel _ _ _ (_symmetric rel _ y r) (bwd t)
+      | rel, x, y, bwdc t r => concat rel _ _ _ (_symmetric rel _ y r) (fwd t)
+
+    \func _inclusion {A : \Set}
+                     (rel : relation A)
+                     (p : relation A)
+                     (i1 : inclusion rel p)
+                     (pr : \Sigma (transitive p) (reflexive p) (symmetric p))
+                     (x y : A)
+                     (t : (constructor rel) x y)
+      : p x y
+      | rel, p, i1, pr, x, y, refl p1 => coe2
+          (@ (pmap2 p idp p1))
+          left
+          (pr.2 x)
+          right
+      | rel, p, i1, pr, x, y, fwd r => i1 x y r
+      | rel, p, i1, pr, x, y, bwd r => pr.3 y x (i1 y x r)
+      | rel, p, i1, pr, x, y, fwdc t r => pr.1 _ _ _ (i1 _ _ t) (_inclusion rel p i1 pr _ y r)
+      | rel, p, i1, pr, x, y, bwdc t r => pr.1 _ _ _ (pr.3 _ _ (i1 _ _ t)) (_inclusion rel p i1 pr _ y r)
+  }
+
+\func concat {A : \Set}
+             (rel : relation A)
+             (a b c : A)
+             (r1 : RSTC rel a b)
+             (r2 : RSTC rel b c)
+  : RSTC rel a c
+  | rel, a, b, c, refl p, refl p1 => refl (p *> p1)
+  | rel, a, b, c, refl p, r => transport (\lam v => RSTC rel v c) (inv p) r
+  | rel, a, b, c, r, refl p => transport (\lam v => RSTC rel a v) p r
+  | rel, a, b, c, fwd r, t => fwdc r t
+  | rel, a, b, c, bwd r, t => bwdc r t
+  | rel, a, b, c, fwdc t r, r2 => fwdc t (concat rel _ b c r r2)
+  | rel, a, b, c, bwdc t r, r2 => bwdc t (concat rel _ b c r r2)

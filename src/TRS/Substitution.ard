@@ -1,0 +1,36 @@
+\import TRS.Signature
+\import TRS.Term
+\import Data.Vector \using (length \as lengthVec)
+\import Relation.Core
+
+\func substitution {S : Signature}
+                   {V : \Set}
+  : \Type =>
+  V -> Term S V
+
+\func substitute {S : Signature}
+                 {V : \Set}
+                 (s : substitution {S} {V})
+                 (t : Term S V)
+  : Term S V
+  | s, Var x => s x
+  | s, Fun f v => Fun f (substituteVec s v)
+  \where
+    \func substituteVec {S : Signature}
+                        {V : \Set}
+                        {i : Nat}
+                        (s : substitution {S} {V})
+                        (v : Vector i (Term S V))
+      : Vector i (Term S V)
+      | {S}, {V}, {0}, s, Nil => Nil
+      | {S}, {V}, {suc n}, s, Cons a' v' => Cons (substitute s a') (substituteVec s v')
+
+\func substitutionPreservesRelation {S : Signature}
+                                    {V : \Set}
+                                    {rel : relation (Term S V)}
+  : \Type =>
+  \Pi (t1 : Term S V) ->
+      \Pi (t2 : Term S V) ->
+          \Pi (r : rel t1 t2) ->
+              \Pi (sub : substitution {S} {V}) ->
+                  rel (substitute sub t1) (substitute sub t2)

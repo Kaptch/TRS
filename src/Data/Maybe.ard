@@ -1,0 +1,10 @@
+\data Maybe (A : \Type)
+  | Just (x : A)
+  | Nothing
+
+\func map {A B : \Type}
+          (m : Maybe A)
+          (f : A -> B)
+  : Maybe B
+  | Just x, f => Just (f x)
+  | Nothing, _ => Nothing

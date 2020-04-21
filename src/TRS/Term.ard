@@ -1,0 +1,138 @@
+\import TRS.Signature
+\import Data.Vector
+\import Data.Maybe
+\import Data.Bool
+\import Logic
+\open Nat
+
+\data Term (S : Signature)
+           (V : \Set)
+  | Var (v : V)
+  | Fun (f : S.symbol) (v : Vector (S.arity f) (Term S V))
+  \where
+    \func term_rect (S : Signature)
+                    (V : \Set)
+                    (P : Term S V -> \Type)
+                    (Q : \Pi (n : Nat) -> Vector n (Term S V) -> \Type)
+                    (A : \Pi (x : V) -> P (Var x))
+                    (B : \Pi (f : S.symbol) ->
+                        \Pi (v : Vector (S.arity f) (Term S V)) ->
+                            Q (S.arity f) v ->
+                            P (Fun f v))
+                    (C : Q zero Nil)
+                    (D : \Pi (t : Term S V) ->
+                        \Pi (n : Nat) ->
+                            \Pi (v : Vector n (Term S V)) ->
+                                P t ->
+                                Q n v ->
+                                Q (suc n) (Cons t v))
+                    (t : Term S V)
+      : P t
+      | S, V, P, Q, A, B, C, D, Var x => A x
+      | S, V, P, Q, A, B, C, D, Fun f v => B f v (terms_rect S V P Q A B C D (Signature.arity f) v)
+      \where
+        \func terms_rect (S : Signature)
+                         (V : \Set)
+                         (P : Term S V -> \Type)
+                         (Q : \Pi (n : Nat) -> Vector n (Term S V) -> \Type)
+                         (A : \Pi (x : V) -> P (Var x))
+                         (B : \Pi (f : S.symbol) ->
+                             \Pi (v : Vector (S.arity f) (Term S V)) ->
+                                 Q (S.arity f) v ->
+                                 P (Fun f v))
+                         (C : Q zero Nil)
+                         (D : \Pi (t : Term S V) ->
+                             \Pi (n : Nat) ->
+                                 \Pi (v : Vector n (Term S V)) ->
+                                     P t ->
+                                     Q n v ->
+                                     Q (suc n) (Cons t v))
+                         (n : Nat)
+                         (v : Vector n (Term S V))
+          : Q n v
+          | S, V, P, Q, A, B, C, D, 0, Nil => C
+          | S, V, P, Q, A, B, C, D, suc n, Cons t' v' =>
+            D t' n v' (term_rect S V P Q A B C D t') (terms_rect S V P Q A B C D n v')
+
+\func root {S : Signature}
+           {V : \Set}
+           (t : Term S V)
+  : Maybe S.symbol
+  | Var _ => Nothing
+  | Fun f _ => Just f
+
+\func isGroundTerm {S : Signature}
+                   {V : \Set}
+                   (t : Term S V)
+  : Bool
+  | Var _ => false
+  | Fun f v => isGroundTerms v
+  \where
+    \func isGroundTerms {S : Signature}
+                        {V : \Set}
+                        {i : Nat}
+                        (v : Vector i (Term S V))
+      : Bool
+      | {S}, {V}, {0}, Nil => true
+      | {S}, {V}, {suc n}, Cons a v' => and (isGroundTerm a) (isGroundTerms v')
+
+\func GroundTerm (S : Signature)
+  : \Set =>
+  Term S Empty
+
+\func GroundTerm->Term {S : Signature}
+                       {V : \Set}
+                       (t : GroundTerm S)
+  : Term S V
+  | Var x => absurd x
+  | Fun f v => Fun f (GroundTerms->Terms v)
+  \where
+    \func GroundTerms->Terms {S : Signature}
+                             {V : \Set}
+                             {i : Nat}
+                             (v : Vector i (GroundTerm S))
+      : Vector i (Term S V)
+      | {S}, {V}, {0}, Nil => Nil
+      | {S}, {V}, {suc n}, Cons a' v' => Cons (GroundTerm->Term a') (GroundTerms->Terms v')
+
+\func length {S : Signature}
+             {V : \Set}
+             (t : Term S V)
+  : Nat =>
+  _help1 S V t
+  \where {
+    \func _help1 (S : Signature)
+                 (V : \Set)
+                 (t : Term S V)
+      : Nat
+      | S, V, Var x => 1
+      | S, V, Fun f v => _help2 S V v
+
+    \func _help2 (S : Signature)
+                 (V : \Set)
+                 {i : Nat}
+                 (v : Vector i (Term S V))
+      : Nat
+      | S, V, {0}, Nil => 0
+      | S, V, {suc n}, Cons a' v' => (_help1 S V a') + (_help2 S V v')
+  }
+
+\func vars {S : Signature}
+           {V : \Set}
+           (t : Term S V)
+  : \Sigma (j : Nat) (Vector j V)
+  | Var x' => (1, Cons x' Nil)
+  | Fun f' v' => _help v'
+  \where
+    \func _help {S : Signature}
+                {V : \Set}
+                {i : Nat}
+                (t : Vector i (Term S V))
+      : \Sigma (j : Nat) (Vector j V)
+      | {S}, {V}, {0}, Nil => (0, Nil)
+      | {S}, {V}, {suc n}, Cons a' v' =>
+        \let
+          | recCall' => vars a'
+          | recCall'' => _help v'
+        \in
+          (recCall'.1 + recCall''.1, concat recCall'.2 recCall''.2)

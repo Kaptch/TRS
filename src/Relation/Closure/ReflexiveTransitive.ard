@@ -1,0 +1,72 @@
+\import Relation.Core
+\import Paths
+
+\truncated \data RTC {A : \Set}
+                     (rel : relation A)
+                     (a b : A)
+: \Prop
+  | base (r : a = b)
+  | cons (x : A)  (t : rel a x) (r : (RTC rel) x b)
+
+\func reflexiveTransitiveClosure {A : \Set}
+                                 (rel : relation A)
+  : closure rel
+            (\lam (r : relation A) => \Sigma (transitive r) (reflexive r))
+            constructor =>
+  (constructor rel,
+   (_transitive rel, _reflexive rel),
+   idp,
+   _inclusion rel)
+  \where {
+    \func constructor {A : \Set}
+                      (r : relation A)
+      : relation A =>
+      RTC r
+
+    \func _transitive {A : \Set} (r : relation A) (x y z : A)
+                      (p : RTC r x y)
+                      (t : RTC r y z)
+      : RTC r x z
+      | r, x, y, z, base r1, base r2 =>
+        base (r1 *> r2)
+      | r, x, y, z, base r1, cons x1 t r2 =>
+        transport (\lam v => RTC r v z) (inv r1) (cons x1 t r2)
+      | r, x, y, z, cons x1 t r1, base r2 =>
+        cons x1 t (transport (\lam v => RTC r x1 v) r2 r1)
+      | r, x, y, z, cons x1 t r1, cons x2 t1 r2 =>
+        concat r x y z (cons x1 t r1) (cons x2 t1 r2)
+
+    \func _reflexive {A : \Set}
+                     (r : relation A)
+      : \Pi (x : A) -> (RTC r) x x =>
+      \lam (a : A) => base idp
+
+    \func _inclusion {A : \Set}
+                     (rel : relation A)
+                     (p : relation A)
+                     (i1 : inclusion rel p)
+                     (pr : \Sigma (transitive p) (reflexive p))
+                     (x y : A)
+                     (t : (constructor rel x y)) : p x y
+      | rel, p, i1, pr, x, y, base r => coe2
+          (@ (pmap2 p idp r))
+          left
+          (pr.2 x)
+          right
+      | rel, p, i1, pr, x, y, cons x1 t r => pr.1 x x1 y (i1 x x1 t) (_inclusion rel p i1 pr x1 y r)
+  }
+
+\func concat {A : \Set}
+             (rel : relation A)
+             (a b c : A)
+             (r1 : RTC rel a b)
+             (r2 : RTC rel b c)
+  : RTC rel a c
+  | rel, a, b, c, base r1, base r2 =>
+    base (r1 *> r2)
+  | rel, a, b, c, base r1, r2 =>
+    transport (\lam v => RTC rel v c) (inv r1) r2
+  | rel, a, b, c, cons x1 t1 r1, base r2 =>
+    cons x1 t1 (concat rel x1 b c r1 (base r2))
+  | rel, a, b, c, cons x1 t1 r1, cons x2 t2 r2 =>
+    cons x1 t1  (concat rel x1 b c r1 (cons x2 t2 r2))

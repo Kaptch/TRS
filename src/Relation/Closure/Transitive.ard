@@ -1,0 +1,58 @@
+\import Relation.Core
+
+\truncated \data TC {A : \Set}
+                    (rel : relation A)
+                    (a b : A)
+: \Prop
+  | base (r : rel a b)
+  | cons (x : A) (t : rel a x) (r : (TC rel) x b)
+
+\func concat {A : \Set}
+             (rel : relation A)
+             (a b c : A)
+             (r1 : TC rel a b)
+             (r2 : TC rel b c)
+  : TC rel a c
+  | rel, a, b, c, base r1, base r2 =>
+    cons b r1 (base r2)
+  | rel, a, b, c, base r1, cons x2 t2 r2 =>
+    cons b r1 (cons x2 t2 r2)
+  | rel, a, b, c, cons x1 t1 r1, base r2 =>
+    cons x1 t1 (concat rel x1 b c r1 (base r2))
+  | rel, a, b, c, cons x1 t1 r1, cons x2 t2 r2 =>
+    cons x1 t1  (concat rel x1 b c r1 (cons x2 t2 r2))
+
+\func transitiveClosure {A : \Set}
+                        (rel : relation A)
+  : closure rel transitive constructor =>
+  (constructor rel,
+   _transitive rel,
+   idp,
+   _inclusion rel)
+  \where {
+    \func constructor {A : \Set}
+                      (r : relation A)
+      : relation A =>
+      TC r
+
+    \func _transitive {A : \Set}
+                      (rel : relation A)
+      : transitive (constructor rel) =>
+      \lam x y z =>
+          \lam r =>
+              \lam q =>
+                  concat rel x y z r q
+
+    \func _inclusion {A : \Set}
+                     (rel : relation A)
+                     (p : relation A)
+                     (i1 : inclusion rel p)
+                     (transPr : transitive p)
+                     (x y : A)
+                     (t : TC rel x y)
+      : p x y
+      | rel, p, i1, transPr, x, y, base r1 =>
+        i1 x y r1
+      | rel, p, i1, transPr, x, y, cons x1 t1 r1 =>
+        transPr x x1 y (i1 x x1 t1) (_inclusion rel p i1 transPr x1 y r1)
+  }

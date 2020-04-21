@@ -1,0 +1,271 @@
+\import Paths
+\import Relation.Core
+\import Relation.Closure.ReflexiveTransitive \using (base \as baseRTC, cons \as consRTC, concat \as concatRTC)
+\import Relation.Closure.ReflexiveSymmetricTransitive \using (concat \as concatRSTC)
+\import Relation.Closure.Transitive \using (base \as baseTC, concat \as concatTC, cons \as consTC)
+\import Relation.Utils
+\import Relation.Wellfounded
+\import Logic
+\import Data.Sigma
+
+\func rule* {A : \Set}
+            (rule : relation A)
+  : relation A =>
+  reflexiveTransitiveClosure.constructor rule
+
+\func rule<->* {A : \Set}
+               (rule : relation A)
+  : relation A =>
+  reflexiveSymmetricTransitiveClosure.constructor rule
+
+\func rule+ {A : \Set}
+            (rule : relation A)
+  : relation A =>
+  transitiveClosure.constructor rule
+
+\func stronglyNormalizing {A : \Set}
+                          (rule : relation A)
+  : \Prop =>
+  wellFounded (co-relation rule)
+
+\func isNormalForm {A : \Set}
+                   (rule : relation A)
+                   (x : A)
+  : \Prop =>
+  Not (\Sigma (y : A)
+              (rule x y))
+
+\func hasNormalForm {A : \Set}
+                    (rule : relation A)
+                    (x : A)
+  : \Prop =>
+  TruncP (\Sigma (y : A)
+                 (rule* rule x y)
+                 (isNormalForm rule y))
+
+\func normalForm {A : \Set}
+                 (rule : relation A)
+  : \Prop =>
+  \Pi (a b : A) ->
+      isNormalForm rule a ->
+      rule<->* rule a b ->
+      rule* rule b a
+
+\func uniqueNormalForm {A : \Set}
+                       (rule : relation A)
+  : \Prop =>
+  \Pi (a b : A) ->
+      isNormalForm rule a ->
+      isNormalForm rule b ->
+      rule<->* rule a b ->
+      a = b
+
+\func weaklyNormalizing {A : \Set}
+                        (rule : relation A)
+  : \Prop =>
+  \Pi (x : A) -> hasNormalForm rule x
+
+\func weaklyConfluent {A : \Set}
+                      (rule : relation A)
+  : \Prop =>
+  \Pi (x y z : A) ->
+      \Sigma (rule x y) (rule x z) ->
+      TruncP (\Sigma (t : A)
+                     (rule* rule y t)
+                     (rule* rule z t))
+
+\func confluent {A : \Set}
+                (rule : relation A)
+  : \Prop =>
+  \Pi (x y z : A) ->
+      \Sigma (rule* rule x y) (rule* rule x z) ->
+      TruncP (\Sigma (t : A)
+                     (rule* rule y t)
+                     (rule* rule z t))
+
+\func confluent->weaklyConfluent {A : \Set}
+                                 (rule : relation A)
+  : confluent rule -> weaklyConfluent rule =>
+  \lam (c : confluent rule) =>
+      \lam (x y z : A) =>
+          \lam (p : \Sigma (rule x y) (rule x z)) =>
+              c x y z
+                ((consRTC y p.1 (baseRTC idp)),
+                 (consRTC z p.2 (baseRTC idp)))
+
+\func confluent->confluent* {A : \Set}
+                            (rule : relation A)
+                            (c : confluent rule)
+  : confluent (rule* rule) =>
+  \lam (x y z : A) =>
+      \lam (p : \Sigma (rule* (rule* rule) x y) (rule* (rule* rule) x z)) =>
+          \scase c x y z (tupleMap (starIdempotent rule x y) (starIdempotent rule x z) p) \with {
+            | inP a =>
+              inP (a.1,
+                   consRTC a.1 a.2 (baseRTC idp),
+                   consRTC a.1 a.3 (baseRTC idp))
+          }
+
+\func confluent->weaklyConfluent* {A : \Set}
+                                  (rule : relation A)
+  : confluent rule -> weaklyConfluent (rule* rule) =>
+  \lam c => confluent->weaklyConfluent (rule* rule) (confluent->confluent* rule c)
+
+\func confluent*->confluent {A : \Set}
+                            (rule : relation A)
+                            (c : confluent (rule* rule))
+  : confluent rule =>
+  \lam (x y z : A) =>
+      \lam (p : \Sigma (rule* rule x y) (rule* rule x z)) =>
+          \scase c x y z (tupleMap
+              (\lam q => consRTC y q (baseRTC idp))
+              (\lam q => consRTC z q (baseRTC idp)) p) \with {
+            | inP a => inP (a.1, starIdempotent rule y a.1 a.2, starIdempotent rule z a.1 a.3)
+          }
+
+\func confluent->normalForm {A : \Set}
+                            (rule : relation A)
+                            (c : confluent rule)
+  : normalForm rule =>
+  \lam (x y : A) =>
+      \lam (n : isNormalForm rule x) =>
+          \lam (p : rule<->* rule x y) =>
+              _help rule c x y n
+                    (reflexiveSymmetricTransitiveClosure._symmetric rule _ _ p)
+  \where
+    \sfunc _help {A : \Set}
+                 (rule : relation A)
+                 (c : confluent rule)
+                 (x y : A)
+                 (n : isNormalForm rule x)
+                 (p : rule<->* rule y x)
+      : rule* rule y x
+      | rule, c, x, y, n, refl p =>
+        baseRTC p
+      | rule, c, x, y, n, fwd r =>
+        consRTC _ r (baseRTC idp)
+      | rule, c, x, y, n, bwd r =>
+        absurd (n (_, r))
+      | rule, c, x, y, n, fwdc t r =>
+        \let
+          | rec => _help rule c _ _ n r
+        \in consRTC _ t rec
+      | rule, c, x, y, n, bwdc t r =>
+        \let
+          | rec => _help rule c _ _ n r
+          | conf => c _ _ _
+                      ((consRTC _ t (baseRTC idp)), rec)
+        \in \scase conf \with {
+          | inP conf' => \case conf'.3 \with {
+            | baseRTC r' => transport
+                (\lam v => rule* rule y v)
+                (inv r')
+                conf'.2
+            | consRTC x' t' r' => absurd (n (_, t'))
+          }
+        }
+
+\func confluent->uniqueNormalForm {A : \Set}
+                                  (rule : relation A)
+                                  (c : confluent rule)
+  : uniqueNormalForm rule =>
+  \lam (x y : A) =>
+      \lam (n1 : isNormalForm rule x) =>
+          \lam (n2 :  isNormalForm rule y) =>
+              \lam (p : rule<->* rule x y) => _help rule c (confluent->normalForm rule c) x y n1 n2 p
+  \where
+    \sfunc _help {A : \Set}
+                 (rule : relation A)
+                 (c : confluent rule)
+                 (n : normalForm rule)
+                 (x y : A)
+                 (n1 : isNormalForm rule x)
+                 (n2 :  isNormalForm rule y)
+                 (p : rule<->* rule x y)
+      : x = y
+      | rule, c, n, x, y, n1, n2, refl p => p
+      | rule, c, n, x, y, n1, n2, fwd r => absurd (n1 (y, r))
+      | rule, c, n, x, y, n1, n2, bwd r => absurd (n2 (x, r))
+      | rule, c, n, x, y, n1, n2, fwdc t r => absurd (n1 (_, t))
+      | rule, c, n, x, y, n1, n2, bwdc t r =>
+        \let
+          | nf1 => n _ _ n2
+                     (reflexiveSymmetricTransitiveClosure._symmetric rule _ _ r)
+          | nf2 => n _ _ n1
+                     (bwd t)
+          | conf => c _ _ _ (nf1, nf2)
+        \in \scase conf \with {
+          | inP conf' => \case conf'.2, conf'.3 \with {
+            | baseRTC r1, baseRTC r2 => r2 *> (inv r1)
+            | _, consRTC x2 t2 r2 => absurd (n1 (_, t2))
+            | consRTC x1 t1 r1, _ => absurd (n2 (_, t1))
+          }
+        }
+
+\func stronglyNormalizing&&weaklyConfluent->confluent {A : \Set} (rule : relation A)
+                                                      (pr1 : stronglyNormalizing rule)
+                                                      (pr2 : weaklyConfluent rule)
+  : confluent rule => _help1 rule (wellFoundedTransitive (co-relation rule) pr1) pr2
+  \where {
+    \func _help1 {A : \Set}
+                 (rule : relation A)
+                 (pr1 : wellFounded (rule+ (co-relation rule)))
+                 (pr2 : weaklyConfluent rule)
+      : confluent rule =>
+      \lam x y z span => _help2 rule x y z (pr1 x) pr2 span.1 span.2
+
+    \func _help2 {A : \Set}
+                 (rule : relation A)
+                 (x y z : A)
+                 (pr1 : acc (rule+ (co-relation rule)) x)
+                 (pr2 : weaklyConfluent rule)
+                 (r1 : rule* rule x y)
+                 (r2 : rule* rule x z)
+      : TruncP (\Sigma (t : A)
+                       (rule* rule y t)
+                       (rule* rule z t))
+      | rule, x, y, z, pr1, pr2, baseRTC r, baseRTC r1 =>
+        inP (x, baseRTC (inv r), baseRTC (inv r1))
+      | rule, x, y, z, accREL f, pr2, baseRTC r, r1 =>
+        inP (z,
+             transport (\lam v => rule* rule v z) r r1,
+             baseRTC idp)
+      | rule, x, y, z, accREL f, pr2, r, RTC.base r1 =>
+        inP (y,
+             baseRTC idp,
+             transport (\lam v => rule* rule v y) r1 r)
+      | rule, x, y, z, accREL f, pr2,
+      consRTC x1 t1 r1,
+      consRTC x2 t2 r2 =>
+        \let
+          | wcrProp => pr2 x x1 x2 (t1, t2)
+        \in \scase wcrProp \with {
+          | inP wcr =>
+            \let
+              | innerPoint => wcr.1
+              | lSide => wcr.2
+              | rSide => wcr.3
+              | ind1Prop => _help2 rule x1 y innerPoint
+                                   (f x1 (baseTC (op t1))) pr2 r1 lSide
+            \in \scase ind1Prop \with {
+              | inP ind1 =>
+                \let
+                  | innerPoint' => ind1.1
+                  | lSide' => ind1.2
+                  | rSide' => ind1.3
+                  | ind2Prop => _help2 rule
+                                       x2
+                                       innerPoint'
+                                       z
+                                       (f x2 (baseTC (op t2)))
+                                       pr2
+                                       (concatRTC rule x2 innerPoint innerPoint' rSide rSide')
+                                       r2
+                \in \scase ind2Prop \with {
+                  | inP ind2 => inP (ind2.1,
+                                     concatRTC rule y innerPoint' ind2.1 lSide' ind2.2,
+                                     ind2.3)
+                }
+            }
+        }
+  }

@@ -1,0 +1,35 @@
+\import Relation.Core
+\import Relation.Closure.Transitive
+\import Relation.Closure.ReflexiveTransitive
+\import Paths
+
+\func plusToStar {A : \Set}
+                 (rel : relation A)
+                 (a b : A)
+                 (r : TC rel a b)
+  : RTC rel a b
+  | rel, a, b, TC.base r =>
+    RTC.cons b r (RTC.base idp)
+  | rel, a, b, TC.cons x t r =>
+    RTC.cons x t (plusToStar rel x b r)
+
+\func starToPlus {A : \Set}
+                 (rel : relation A)
+                 (a b c : A)
+                 (p : rel a b)
+                 (r : RTC rel b c)
+  : TC rel a c
+  | rel, a, b, c, p, RTC.base r =>
+    transport (\lam v => TC rel a v) r (TC.base p)
+  | rel, a, b, c, p, RTC.cons x t r =>
+    TC.cons b p (starToPlus rel b x c t r)
+
+\func starIdempotent  {A : \Set}
+                      (rel : relation A)
+                      (a b : A)
+                      (r : RTC (RTC rel) a b)
+  : RTC rel a b
+  | rel, a, b, RTC.base r' =>
+    RTC.base r'
+  | rel, a, b, RTC.cons x' t' r' =>
+    Relation.Closure.ReflexiveTransitive.concat rel a x' b t' (starIdempotent rel x' b r')

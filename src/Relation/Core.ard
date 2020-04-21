@@ -1,0 +1,84 @@
+\import Logic
+
+\func relation (A : \Set)
+  : \Type =>
+  A -> A -> \Prop
+
+\func reflexive {A : \Set}
+                (r : relation A)
+  : \Prop =>
+  \Pi (x : A) -> r x x
+
+\func symmetric {A : \Set}
+                (r : relation A)
+  : \Prop =>
+  \Pi (x y : A) -> r x y -> r y x
+
+\func transitive {A : \Set}
+                 (r : relation A)
+  : \Prop =>
+  \Pi (x y z : A) -> r x y -> r y z -> r x z
+
+\func antisymmetric {A : \Set}
+                    (r : relation A)
+  : \Prop =>
+  \Pi (x y : A) -> r x y -> r y x -> x = y
+
+\func equivalence {A : \Set}
+                  (r : relation A)
+  : \Prop =>
+  \Sigma (reflexive r)
+         (symmetric r)
+         (transitive r)
+
+\func inverse {A : \Set}
+              (r : relation A)
+  : relation A =>
+  \lam (x y : A) => r y x
+
+\data co-relation {A : \Set}
+                  (rel : relation A) (a b : A)
+  | op (rel b a)
+
+\func inclusion {A : \Set}
+                (r : relation A)
+                (p : relation A)
+  : \Prop =>
+  \Pi (x y : A) -> r x y -> p x y
+
+\func equals {A : \Set}
+             (r : relation A)
+             (p : relation A)
+  : \Prop =>
+  \Sigma (inclusion r p)
+         (inclusion p r)
+
+\func commutes {A : \Set}
+               (r : relation A)
+               (p : relation A)
+  : \Prop =>
+  \Pi (x y : A) ->
+      r y x ->
+      \Pi (z : A) (p z y) ->
+          TruncP (\Sigma (a : A)
+                         (p a x)
+                         (r z a))
+
+\func union {A : \Set}
+            (rel1 : relation A)
+            (rel2 : relation A)
+  : relation A =>
+  \lam (x y : A) => rel1 x y || rel2 x y
+
+\func closure {A : \Set}
+              (initial : relation A)
+              (property : relation A -> \Prop)
+              (constructor : relation A -> relation A)
+  : \Type =>
+  \Sigma (new : relation A)
+         (property new)
+         (p : new = constructor initial)
+         (\Pi (p : relation A) ->
+             inclusion initial p ->
+             property p ->
+             inclusion new p)

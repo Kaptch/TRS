@@ -1,0 +1,85 @@
+\import Data.Bool
+\import Data.Sigma
+\import Paths
+\open Nat
+
+\data Vector (n : Nat) (A : \Type) \elim n
+  | zero => Nil
+  | suc n => Cons A (Vector n A)
+
+\func head {i : Nat}
+           {A : \Type}
+           (v : Vector (suc i) A)
+  : A
+  | Cons a _ => a
+
+\func tail {i : Nat}
+           {A : \Type}
+           (v : Vector (suc i) A)
+  : Vector i A
+  | Cons _ v' => v'
+
+\func map {i : Nat}
+          {A B : \Type}
+          (f : A -> B)
+          (v : Vector i A)
+  : Vector i B
+  | {0}, f, Nil => Nil
+  | {suc n}, f, Cons a v => Cons (f a) (map f v)
+
+\func concat {i j : Nat}
+             {A : \Type}
+             (v1 : Vector i A)
+             (v2 : Vector j A)
+  : Vector (i + j) A \elim i, v1
+  | 0, Nil => transport (\lam k => Vector k A) (zero+idempotent j) v2
+  | suc n, Cons a v => transport (\lam k => Vector k A) (inv (suc_linear n j)) (Cons a (concat v v2))
+  \where {
+    \func zero+idempotent (i : Nat)
+      : i = 0 + i
+      | 0 => idp
+      | suc n => pmap suc (zero+idempotent n)
+
+    \func suc_linear (i : Nat)
+                     (j : Nat)
+      : suc i Nat.+ j = suc (i + j)
+      | _, 0 => idp
+      | _, suc n => pmap suc (suc_linear _ n)
+  }
+
+\func foldr {i : Nat}
+            {A B : \Type}
+            (f : A -> B -> B)
+            (acc : B)
+            (v : Vector i A)
+  : B
+  | {0}, _, acc, Nil => acc
+  | {suc n}, f, acc, Cons a' v' => foldr f (f a' acc) v'
+
+\func length {i : Nat}
+             {A : \Type}
+             (v : Vector i A)
+  : Nat
+  | {0}, Nil => 0
+  | {suc n}, Cons _ v' => suc (length v')
+
+\func count {A : \Type}
+            {i : Nat}
+            (P : A -> Bool)
+            (v : Vector i A)
+  : Nat
+  | {A}, {0}, P, Nil => 0
+  | {A}, {suc n}, P, Cons a' v' => if (P a') (suc (count P v')) (count P v')
+
+\func filter {A : \Type}
+             {i : Nat}
+             (P : A -> Bool)
+             (v : Vector i A)
+  : \Sigma (j : Nat) (Vector j A)
+  | {A}, {0}, P, Nil => (_, Nil)
+  | {A}, {suc n}, P, Cons a' v' => \case filter P v' \with {
+    | (_, v'') => \case (P a') \with {
+      | true => (suc _, Cons a' v'')
+      | false => (_, v'')
+    }
+  }

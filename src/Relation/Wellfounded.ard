@@ -1,0 +1,59 @@
+\import Relation.Core
+\import Relation.Closure.Transitive
+
+\data acc {A : \Set}
+          (rel : relation A)
+          (a : A)
+: \Prop
+  | accREL (f : \Pi (b : A) -> rel b a -> acc rel b)
+  \where
+    \func ind {A : \Set}
+              {rel : relation A}
+              (P : \Pi (a : A) -> acc rel a -> \Type)
+              (f : \Pi (a : A) ->
+                  \Pi (h : \Pi (b : A) -> rel b a -> acc rel b) ->
+                      (\Pi (b : A) -> \Pi (l : rel b a) -> P b (h b l)) ->
+                      P a (accREL h))
+              (a : A)
+              (c : acc rel a)
+      : P a c
+      |  P, f, a, (accREL h) =>
+        f a h (\lam b => \lam l => ind P f b (h b l))
+
+\func wellFounded {A : \Set}
+                  (rel : relation A)
+  : \Prop =>
+  \Pi (x : A) -> acc rel x
+
+\func downwardsClosed {A : \Set}
+                      (rel : relation A)
+                      (x y : A)
+                      (p : acc (TC rel) y)
+                      (r : TC rel x y)
+  : acc (TC rel) x
+  | rel, x, y, accREL f, r =>
+    accREL (\lam z r' => f z (concat rel z x y r' r))
+
+\func accTransitiveClosure {A : \Set}
+                           (rel : relation A)
+                           (x : A)
+                           (a : acc rel x)
+  : acc (TC rel) x
+  | rel, x, f => accREL (help rel f)
+  \where
+    \func help {A : \Set}
+               (rel : relation A)
+               {x : A}
+               (w : acc rel x)
+               (b : A) (rs : TC rel b x)
+      : acc (TC rel) b
+      | rel, accREL f, b, base r => accTransitiveClosure rel b (f b r)
+      | rel, a, b, cons x' t' r' => downwardsClosed rel b x'
+                                                    (help rel a x' r')
+                                                    (base t')
+
+\func wellFoundedTransitive {A : \Set}
+                            (rel : relation A)
+                            (w : wellFounded rel)
+  : wellFounded (TC rel) =>
+  \lam (x : A) => accTransitiveClosure rel x (w x)
