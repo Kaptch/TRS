@@ -1,7 +1,9 @@
+\import Logic
 \import TRS.Signature
 \import TRS.Term
 \import Data.Vector \using (length \as lengthVec)
-\import Relation.Core
+\import Relation.Core \using (reflexive \as isReflexive, transitive \as isTransitive)
+\import Relation.Wellfounded \using (wellFounded \as isWellFounded)
 
 \func substitution {S : Signature}
                    {V : \Set}
@@ -25,6 +27,13 @@
       | {S}, {V}, {0}, s, Nil => Nil
       | {S}, {V}, {suc n}, s, Cons a' v' => Cons (substitute s a') (substituteVec s v')
 
+\func composition {S : Signature}
+                  {V : \Set}
+                  (s1 : substitution {S} {V})
+                  (s2 : substitution {S} {V})
+  : substitution {S} {V} =>
+  \lam (v : V) => substitute s2 (s1 v)
+
 \func substitutionPreservesRelation {S : Signature}
                                     {V : \Set}
                                     {rel : relation (Term S V)}
@@ -34,3 +43,32 @@
           \Pi (r : rel t1 t2) ->
               \Pi (sub : substitution {S} {V}) ->
                   rel (substitute sub t1) (substitute sub t2)
+
+\func subsumes {S : Signature}
+               {V : \Set}
+               (s : Term S V)
+               (t : Term S V)
+  : \Prop =>
+  TruncP (\Sigma (delta : substitution) (s = substitute delta t))
+  \where {
+    -- TODO
+
+    \func reflexive {S : Signature}
+                    {V : \Set}
+      : isReflexive (subsumes {S} {V}) =>
+      \lam (t : Term S V) => inP (Var, {?})
+
+    \func transitive {S : Signature}
+                     {V : \Set}
+      : isTransitive (subsumes {S} {V}) =>
+      \lam (x y z : Term S V) =>
+          \lam (r1 : subsumes x y) =>
+              \lam (r2 : subsumes y z) => \scase r1, r2 \with {
+                | inP a', inP a'' => inP (composition a'.1 a''.1, {?})
+              }
+
+    \func wellFounded  {S : Signature}
+                       {V : \Set}
+      : isWellFounded (subsumes {S} {V}) =>
+      {?}
+  }
