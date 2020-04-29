@@ -1,4 +1,5 @@
 \import Logic
+\import Paths
 \import TRS.Signature
 \import TRS.Term
 \import Data.Vector \using (length \as lengthVec)
@@ -9,6 +10,11 @@
                    {V : \Set}
   : \Type =>
   V -> Term S V
+
+\func id  {S : Signature}
+          {V : \Set}
+  : substitution {S} {V} =>
+  \lam (x : V) => Var x
 
 \func substitute {S : Signature}
                  {V : \Set}
@@ -32,7 +38,7 @@
                   (s1 : substitution {S} {V})
                   (s2 : substitution {S} {V})
   : substitution {S} {V} =>
-  \lam (v : V) => substitute s2 (s1 v)
+  \lam (v : V) => substitute s1 (s2 v)
 
 \func substitutionPreservesRelation {S : Signature}
                                     {V : \Set}
@@ -51,12 +57,26 @@
   : \Prop =>
   TruncP (\Sigma (delta : substitution) (s = substitute delta t))
   \where {
-    -- TODO
-
     \func reflexive {S : Signature}
                     {V : \Set}
       : isReflexive (subsumes {S} {V}) =>
-      \lam (t : Term S V) => inP (Var, {?})
+      \lam (t : Term S V) => inP (Var, inv (help1 t))
+      \where {
+        \func help1 {S : Signature}
+                    {V : \Set}
+                    (t : Term S V)
+          : substitute Var t = t
+          | Var v => idp
+          | Fun f v => pmap (Fun f) (help2 v)
+
+        \func help2 {S : Signature}
+                    {V : \Set}
+                    {i : Nat}
+                    (v : Vector i (Term S V))
+          : substitute.substituteVec Var v = v
+          | {S}, {V}, {0}, Vector.Nil => idp
+          | {S}, {V}, {suc n}, Vector.Cons a' v' => pmap2 Cons (help1 a') (help2 v')
+      }
 
     \func transitive {S : Signature}
                      {V : \Set}
@@ -64,11 +84,27 @@
       \lam (x y z : Term S V) =>
           \lam (r1 : subsumes x y) =>
               \lam (r2 : subsumes y z) => \scase r1, r2 \with {
-                | inP a', inP a'' => inP (composition a'.1 a''.1, {?})
+                | inP a', inP a'' =>
+                  inP (composition a'.1 a''.1, a'.2 *> pmap (substitute a'.1) a''.2 *> (help1 z a'.1 a''.1))
               }
+      \where {
+        \func help1  {S : Signature}
+                     {V : \Set}
+                     (x : Term S V)
+                     (a1 : substitution {S} {V})
+                     (a2 : substitution {S} {V})
+          : substitute a1 (substitute a2 x) = substitute (composition a1 a2) x
+          | Var v, a1, a2 => idp
+          | Fun f v, a1, a2 => pmap (Fun f) (help2 v a1 a2)
 
-    \func wellFounded  {S : Signature}
-                       {V : \Set}
-      : isWellFounded (subsumes {S} {V}) =>
-      {?}
+        \func help2  {S : Signature}
+                     {V : \Set}
+                     {i : Nat}
+                     (v : Vector i (Term S V))
+                     (a1 : substitution {S} {V})
+                     (a2 : substitution {S} {V})
+          : substitute.substituteVec a1 (substitute.substituteVec a2 v) = substitute.substituteVec (composition a1 a2) v
+          | {S}, {V}, {0}, Vector.Nil, a1, a2 => idp
+          | {S}, {V}, {suc n}, Vector.Cons a' v', a1, a2 => pmap2 Cons (help1 a' a1 a2) (help2 v' a1 a2)
+      }
   }

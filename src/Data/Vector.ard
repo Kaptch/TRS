@@ -1,11 +1,20 @@
 \import Data.Bool
 \import Data.Sigma
 \import Paths
+\import Set.Fin
 \open Nat
 
 \data Vector (n : Nat) (A : \Type) \elim n
   | zero => Nil
   | suc n => Cons A (Vector n A)
+
+\func \infix 4 !! {A : \Type}
+                  {i : Nat}
+                  (v : Vector i A)
+                  (n : Fin i)
+  : A
+  | {A}, {suc n}, Cons a' v', fzero => a'
+  | {A}, {suc n}, Cons a' v', fsuc f => v' !! f
 
 \func head {i : Nat}
            {A : \Type}
