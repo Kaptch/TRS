@@ -1,0 +1,98 @@
+\import Logic
+\import Paths
+\import TRS.Context
+\import TRS.Signature
+\import TRS.Substitution
+\import TRS.Term
+\import Relation.Core
+\import Data.Vector (inclusion \as incl)
+
+\func lSideIsNotVar {S : Signature}
+                    {V : \Set}
+                    (rel : relation (Term S V))
+                    (a b : Term S V)
+  : \Prop =>
+  \Pi (r : rel a b) ->
+      (Not (\Sigma (x : V) (a = Var x)))
+
+\func preserveVars {S : Signature}
+                   {V : \Set}
+                   (rel : relation (Term S V))
+                   (a b : Term S V)
+  : \Prop =>
+  \Pi (r : rel a b) ->
+      incl (vars b).2 (vars a).2
+
+\record reductionRule {S : Signature}
+                      {V : \Set}
+{
+  | rule : relation (Term S V)
+  | lSideIsNotVarProp : \Pi (x y : Term S V) -> lSideIsNotVar rule x y
+  | preserveVarsProp :  \Pi (x y : Term S V) -> preserveVars rule x y
+}
+
+\func monotonic {S : Signature}
+                {V : \Set}
+                (r : relation (Term S V))
+  : \Prop =>
+  \Pi (x y : Term S V) ->
+      \Pi (c : Context S V) ->
+          r x y ->
+          r (fill c x) (fill c y)
+
+\func stable {S : Signature}
+             {V : \Set}
+             (r : relation (Term S V))
+  : \Prop =>
+  \Pi (x y : Term S V) ->
+      \Pi (delta : substitution {S} {V}) ->
+          r x y ->
+          r (substitute delta x) (substitute delta y)
+
+\func reductionStep {S : Signature}
+                    {V : \Set}
+                    (r : reductionRule {S} {V})
+                    (x y : Term S V)
+  : \Prop =>
+  TruncP (\Sigma (x' y' : Term S V)
+                 (rel : r.rule x' y')
+                 (c : Context S V)
+                 (delta : substitution {S} {V})
+                 (x = fill c (substitute delta x'))
+                 (y = fill c (substitute delta y')))
+
+\func reductionStepMonotonic {S : Signature}
+                             {V : \Set}
+                             (r : reductionRule {S} {V})
+  : monotonic (reductionStep r) =>
+  \lam (x y : Term S V) =>
+      \lam (c : Context S V) =>
+          \lam (rr : reductionStep r x y) =>
+              \scase rr \with {
+                | inP a =>
+                  inP (a.1,
+                       a.2,
+                       a.3,
+                       composition c a.4,
+                       a.5,
+                       (pmap (fill c) a.6) *> (fillfill c a.4 (substitute a.5 a.1)),
+                       (pmap (fill c) a.7) *> (fillfill c a.4 (substitute a.5 a.2)))
+              }
+
+\func reductionStepStable {S : Signature}
+                          {V : \Set}
+                          (r : reductionRule {S} {V})
+  : stable (reductionStep r) =>
+  \lam (x y : Term S V) =>
+      \lam (delta : substitution {S} {V}) =>
+          \lam (rr : reductionStep r x y) =>
+              \scase rr \with {
+                | inP a =>
+                  inP (a.1,
+                       a.2,
+                       a.3,
+                       a.4,
+                       TRS.Substitution.composition delta a.5,
+                       (pmap (substitute delta) a.6) *> {?},
+                       {?})
+              }

@@ -1,5 +1,6 @@
 \import Data.Bool
 \import Data.Sigma
+\import Logic
 \import Paths
 \import Set.Fin
 \open Nat
@@ -92,3 +93,18 @@
       | false => (_, v'')
     }
   }
+
+\func in {A : \Type}
+         {i : Nat}
+         (x : A)
+         (v : Vector i A)
+  : \Prop
+  | {A}, {0}, x, Nil => Empty
+  | {A}, {suc n}, x, Cons a' v' => (x = a') || in x v'
+
+\func inclusion {A : \Type}
+                {i j : Nat}
+                (v1 : Vector i A)
+                (v2 : Vector j A)
+  : \Prop =>
+  \Pi (x : A) -> in x v1 -> in x v2

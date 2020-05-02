@@ -1,5 +1,6 @@
 \import Logic
 \import Paths
+\import TRS.Context
 \import TRS.Signature
 \import TRS.Term
 \import Data.Vector \using (length \as lengthVec)
@@ -39,6 +40,21 @@
                   (s2 : substitution {S} {V})
   : substitution {S} {V} =>
   \lam (v : V) => substitute s1 (s2 v)
+
+\func substitutesubstitute {S : Signature}
+                           {V : \Set}
+                           (s1 : substitution {S} {V})
+                           (s2 : substitution {S} {V})
+                           (t : Term S V)
+  : substitute s1 (substitute s2 t) = substitute (composition s1 s2) t =>
+  term_ind
+      (\lam t => substitute s1 (substitute s2 t) = substitute (composition s1 s2) t)
+      (\lam n => \lam v => substitute.substituteVec s1 (substitute.substituteVec s2 v) = substitute.substituteVec (composition s1 s2) v)
+      (\lam _ => idp)
+      (\lam f => \lam v => \lam p => pmap (Fun f) p)
+      idp
+      (\lam t => \lam n => \lam v => \lam p => \lam pv => pmap2 Cons p pv)
+      t
 
 \func substitutionPreservesRelation {S : Signature}
                                     {V : \Set}
@@ -108,3 +124,23 @@
           | {S}, {V}, {suc n}, Vector.Cons a' v', a1, a2 => pmap2 Cons (help1 a' a1 a2) (help2 v' a1 a2)
       }
   }
+
+\func substituteContext {S : Signature}
+                        {V : \Set}
+                        (s : substitution {S} {V})
+                        (c : Context S V)
+  : Context S V
+  | _, Hole => Hole
+  | s, Cont f i j p t1 c' t2 => Cont f i j p (substitute.substituteVec s t1) (substituteContext s c') (substitute.substituteVec s t2)
+
+\func substituteFill {S : Signature}
+                     {V : \Set}
+                     (t : Term S V)
+                     (s : substitution {S} {V})
+                     (c : Context S V)
+  : substitute s (fill c t) = fill (substituteContext s c) (substitute s t) =>
+  context_ind (\lam x => substitute s (fill x t) = fill (substituteContext s x) (substitute s t))
+              idp
+              (\lam c f i j p t1 t2 hyp =>
+                  {?})
+              c

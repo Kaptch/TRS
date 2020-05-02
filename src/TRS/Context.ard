@@ -14,6 +14,23 @@
          (c : Context S V)
          (t2 : Vector j (Term S V))
 
+\func context_ind {S : Signature}
+                  {V : \Set}
+                  (P : Context S V -> \Type)
+                  (P0 : P Hole)
+                  (P1 : \Pi (c : Context S V)
+                            (f : S.symbol)
+                            (i j : Nat)
+                            (p : i + suc(j) = S.arity f)
+                            (t1 : Vector i (Term S V))
+                            (t2 : Vector j (Term S V)) ->
+                      P c ->
+                      P (Cont f i j p t1 c t2))
+                  (c : Context S V)
+  : P c
+  | P, P0, P1, Hole => P0
+  | P, P0, P1, Cont f i j p t1 c' t2 => P1 c' f i j p t1 t2 (context_ind P P0 P1 c')
+
 \func fill {S : Signature}
            {V : \Set}
            (c : Context S V)
@@ -21,11 +38,7 @@
   : Term S V
   | Hole, t => t
   | Cont f i j p t1 c t2, t =>
-    \let
-      | filled => fill c t
-      | v' => Cons filled t2 -- is it possible to check that we perform a recursive call instead of 'Cons t t2'?
-      | v'' => concat t1 v'
-    \in Fun f (transport (\lam k => Vector k _) p v'')
+    Fun f (transport (\lam k => Vector k _) p (concat t1 (Cons (fill c t) t2)))
 
 \func composition {S : Signature}
                   {V : \Set}
@@ -34,6 +47,45 @@
   : Context S V
   | Hole, c => c
   | Cont f i j p t1 c1 t2, c2 => Cont f i j p t1 (composition c1 c2) t2
+
+\func fillfill {S : Signature}
+               {V : \Set}
+               (c1 : Context S V)
+               (c2 : Context S V)
+               (t : Term S V)
+  : fill c1 (fill c2 t) = fill (composition c1 c2) t
+  | Hole, _, _ => idp
+  | Cont f i j p t1 c t2, Hole, v =>
+    pmap (Fun f)
+         (pmap (\lam x => coe (\lam (i1 : I) => Vector (p @ i1) _) x right)
+               (pmap (concat t1) (pmap (\lam x => Cons x t2) (pmap (\lam x => fill x v) (_help c)))))
+  | Cont f i j p t1 c t2, Cont f' i' j' p' t1' c' t2', v =>
+    context_ind (\lam q =>
+        fill q (fill (Cont f' i' j' p' t1' c' t2') v)
+        =
+        fill (composition q (Cont f' i' j' p' t1' c' t2')) v)
+                idp
+                (\lam (c : Context _ _)
+                      f
+                      (i j : Nat)
+                      (p : suc (i + j) = arity f)
+                      (t1 : Vector i (Term _ _))
+                      (t2 : Vector j (Term _ _))
+                      (hyp :
+                      fill c
+                           (Fun f' (transport (\lam (k : Nat) => Vector k (Term _ _)) p' (concat t1' (Cons (fill c' v) t2'))))
+                      =
+                      fill (composition c (Cont f' i' j' p' t1' c' t2'))
+                           v)
+                => pmap (Fun f) (pmap (\lam x => coe (\lam (i1 : I) => Vector (p @ i1) _) x right)
+                                      (pmap (concat t1) (pmap (\lam x => Cons x t2) hyp)))) (Cont f i j p t1 c t2)
+  \where
+    \func _help {S : Signature}
+                {V : \Set}
+                (c : Context S V)
+      : c = composition c Hole
+      | Hole => idp
+      | Cont f i j p t1 c' t2 => pmap (\lam x => Cont f i j p t1 x t2) (_help c')
 
 \func subterm {S : Signature}
               {V : \Set}
