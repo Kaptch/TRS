@@ -1,7 +1,7 @@
 \import TRS.Signature
 \import Data.Vector
 \import Order.LinearOrder
-\import Data.Maybe
+\import Data.Maybe \hiding (map)
 \import Data.Bool
 \import Logic
 \import Arith.Nat (NatLE)
@@ -10,7 +10,7 @@
 \data Term (S : Signature)
            (V : \Set)
   | Var (v : V)
-  | Fun (f : S.symbol) (v : Vector (S.arity f) (Term S V))
+  | Fun (f : S.symbol) (v : Vector (arity f) (Term S V))
 
 \func term_ind {S : Signature}
                {V : \Set}
@@ -18,8 +18,8 @@
                (Q : \Pi (n : Nat) -> Vector n (Term S V) -> \Type)
                (A : \Pi (x : V) -> P (Var x))
                (B : \Pi (f : S.symbol) ->
-                   \Pi (v : Vector (S.arity f) (Term S V)) ->
-                       Q (S.arity f) v ->
+                   \Pi (v : Vector (arity f) (Term S V)) ->
+                       Q (arity f) v ->
                        P (Fun f v))
                (C : Q zero Nil)
                (D : \Pi (t : Term S V) ->
@@ -31,7 +31,7 @@
                (t : Term S V)
   : P t
   | P, Q, A, B, C, D, Var x => A x
-  | P, Q, A, B, C, D, Fun f v => B f v (terms_ind P Q A B C D (Signature.arity f) v)
+  | P, Q, A, B, C, D, Fun f v => B f v (terms_ind P Q A B C D (arity f) v)
   \where
     \func terms_ind {S : Signature}
                     {V : \Set}
@@ -39,8 +39,8 @@
                     (Q : \Pi (n : Nat) -> Vector n (Term S V) -> \Type)
                     (A : \Pi (x : V) -> P (Var x))
                     (B : \Pi (f : S.symbol) ->
-                        \Pi (v : Vector (S.arity f) (Term S V)) ->
-                            Q (S.arity f) v ->
+                        \Pi (v : Vector (arity f) (Term S V)) ->
+                            Q (arity f) v ->
                             P (Fun f v))
                     (C : Q zero Nil)
                     (D : \Pi (t : Term S V) ->
@@ -118,28 +118,6 @@
       | S, V, {0}, Nil => 1
       | S, V, {suc n}, Cons a' v' => (_help1 S V a') + (_help2 S V v')
   }
-
---\func depth {S : Signature}
---            {V : \Set}
---            (t : Term S V)
---  : Nat
---  | t => _help1 _ _ t
---  \where {
---    \func _help1 (S : Signature)
---                 (V : \Set)
---                 (t : Term S V)
---      : Nat
---      | S, V, Var v => 1
---      | S, V, Fun f v => _help2 S V _ v
---
---    \func _help2 (S : Signature)
---                 (V : \Set)
---                 (i : Nat)
---                 (v : Vector i (Term S V))
---      : Nat
---      | S, V, 0, Nil => 1
---      | S, V, suc n, Cons a' v' => suc (Order.LinearOrder.TotalOrder.meet (_help1 S V a') (_help2 S V n v'))
---  }
 
 \func vars {S : Signature}
            {V : \Set}

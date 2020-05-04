@@ -1,8 +1,9 @@
+\import Function (o)
 \import Logic
 \import Paths
 \import TRS.Context
 \import TRS.Signature
-\import TRS.Substitution
+\import TRS.Substitution \using (composition \as compositionSub)
 \import TRS.Term
 \import Relation.Core
 \import Data.Vector (inclusion \as incl)
@@ -61,6 +62,16 @@
                  (x = fill c (substitute delta x'))
                  (y = fill c (substitute delta y')))
 
+\func reductionStepIsRule {S : Signature}
+                          {V : \Set}
+                          (r : reductionRule {S} {V})
+                          (c : Context S V)
+                          (s : substitution {S} {V})
+                          {x y : Term S V}
+                          (rel : r.rule x y)
+  : reductionStep r (fill c (substitute s x)) (fill c (substitute s y)) =>
+  inP (x, y, rel, c, s, idp, idp)
+
 \func reductionStepMonotonic {S : Signature}
                              {V : \Set}
                              (r : reductionRule {S} {V})
@@ -75,8 +86,8 @@
                        a.3,
                        composition c a.4,
                        a.5,
-                       (pmap (fill c) a.6) *> (fillfill c a.4 (substitute a.5 a.1)),
-                       (pmap (fill c) a.7) *> (fillfill c a.4 (substitute a.5 a.2)))
+                       (pmap (fill c) a.6) *> (fillFill c a.4 (substitute a.5 a.1)),
+                       (pmap (fill c) a.7) *> (fillFill c a.4 (substitute a.5 a.2)))
               }
 
 \func reductionStepStable {S : Signature}
@@ -88,11 +99,23 @@
           \lam (rr : reductionStep r x y) =>
               \scase rr \with {
                 | inP a =>
-                  inP (a.1,
-                       a.2,
-                       a.3,
-                       a.4,
-                       TRS.Substitution.composition delta a.5,
-                       (pmap (substitute delta) a.6) *> {?},
-                       {?})
+                  \let
+                    | A => transport2
+                        (\lam x' y' => reductionStep r (substitute delta x') (substitute delta y'))
+                        (inv a.6)
+                        (inv a.7)
+                    | B => transport2
+                        (\lam x' y' => reductionStep r x' y')
+                        (inv (substituteFill (substitute a.5 a.1) delta a.4))
+                        (inv (substituteFill (substitute a.5 a.2) delta a.4))
+                    | C => transport2
+                        (\lam x' y' => reductionStep r (fill (substituteContext delta a.4) x') (fill (substituteContext delta a.4) y'))
+                        (inv (substituteSubstitute delta a.5 a.1))
+                        (inv (substituteSubstitute delta a.5 a.2))
+                    | D => reductionStepIsRule
+                        r
+                        (substituteContext delta a.4)
+                        (compositionSub delta a.5)
+                        a.3
+                  \in (A o B o C) D
               }

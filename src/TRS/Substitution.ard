@@ -1,10 +1,12 @@
+\import Function.Meta
 \import Logic
 \import Paths
+\import Paths.Meta
 \import TRS.Context
 \import TRS.Signature
 \import TRS.Term
 \import Data.Vector \using (length \as lengthVec)
-\import Relation.Core \using (reflexive \as isReflexive, transitive \as isTransitive)
+\import Relation.Core \using (inclusion \as inclusionRel, reflexive \as isReflexive, transitive \as isTransitive)
 \import Relation.Wellfounded \using (wellFounded \as isWellFounded)
 
 \func substitution {S : Signature}
@@ -41,7 +43,7 @@
   : substitution {S} {V} =>
   \lam (v : V) => substitute s1 (s2 v)
 
-\func substitutesubstitute {S : Signature}
+\func substituteSubstitute {S : Signature}
                            {V : \Set}
                            (s1 : substitution {S} {V})
                            (s2 : substitution {S} {V})
@@ -133,6 +135,8 @@
   | _, Hole => Hole
   | s, Cont f i j p t1 c' t2 => Cont f i j p (substitute.substituteVec s t1) (substituteContext s c') (substitute.substituteVec s t2)
 
+-- TODO
+
 \func substituteFill {S : Signature}
                      {V : \Set}
                      (t : Term S V)
@@ -141,6 +145,26 @@
   : substitute s (fill c t) = fill (substituteContext s c) (substitute s t) =>
   context_ind (\lam x => substitute s (fill x t) = fill (substituteContext s x) (substitute s t))
               idp
-              (\lam c f i j p t1 t2 hyp =>
-                  {?})
+              (\lam c f i j p t1 t2 hyp => {?})
               c
+
+\func consSubstituteVec {S : Signature}
+                        {V : \Set}
+                        {i : Nat}
+                        (s : substitution {S} {V})
+                        (c : Context S V)
+                        (t : Term S V)
+                        (v : Vector i (Term S V))
+  : (Cons (substitute s (fill c t)) (substitute.substituteVec s v)) = (substitute.substituteVec s (Cons (fill c t) v)) =>
+  \let
+    | x => rewrite (substituteVecMap s v) (consMap (substitute s) (fill c t) v)
+  \in rewrite (substituteVecMap s v) (inv x)
+
+\func substituteVecMap  {S : Signature}
+                        {V : \Set}
+                        {i : Nat}
+                        (s : substitution {S} {V})
+                        (v : Vector i (Term S V))
+  : substitute.substituteVec s v = map (substitute s) v
+  | {S}, {V}, {0}, s, Vector.Nil => idp
+  | {S}, {V}, {suc i}, s, Vector.Cons a' v' => pmap (Cons (substitute s a')) (substituteVecMap s v')

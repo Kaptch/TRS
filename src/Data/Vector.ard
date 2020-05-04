@@ -2,12 +2,23 @@
 \import Data.Sigma
 \import Logic
 \import Paths
+\import Paths.Meta
 \import Set.Fin
 \open Nat
 
 \data Vector (n : Nat) (A : \Type) \elim n
   | zero => Nil
   | suc n => Cons A (Vector n A)
+
+\func vector_ind {A : \Type}
+                 (P : \Pi (n : Nat) -> Vector n A -> \Type)
+                 (P0 : P 0 Nil)
+                 (Pn : \Pi (a : A) (n : Nat) (v : Vector n A) -> P n v -> P (suc n) (Cons a v))
+                 (n : Nat)
+                 (v : Vector n A)
+  : P n v
+  | P, P0, Pn, 0, Nil => P0
+  | P, P0, Pn, suc n, Cons a v => Pn a n v (vector_ind P P0 Pn n v)
 
 \func \infix 4 !! {A : \Type}
                   {i : Nat}
@@ -108,3 +119,43 @@
                 (v2 : Vector j A)
   : \Prop =>
   \Pi (x : A) -> in x v1 -> in x v2
+
+\func consMap {A B : \Type}
+              {i : Nat}
+              (f : A -> B)
+              (a : A)
+              (v : Vector i A)
+  : Cons (f a) (map f v) = map f (Cons a v) =>
+  idp
+
+\func transportMap {A B : \Type}
+                   {i j : Nat}
+                   (f : A -> B)
+                   (p : i = j)
+                   (v : Vector i A)
+  : map f (transport (\lam k => Vector k A) p v) = transport (\lam k => Vector k B) p (map f v) =>
+  Jl (\lam a' p' => map f (transport (\lam k => Vector k A) p' v) = transport (\lam k => Vector k B) p' (map f v)) idp p
+
+\func concatNil {A : \Type}
+                {i : Nat}
+                (v : Vector i A)
+  : v = concat v Nil
+  | {A}, {0}, Nil => idp
+  | {A}, {suc i}, Cons a' v' => pmap (Cons a') (concatNil v')
+
+\func concatMap {A B : \Type}
+                {i j : Nat}
+                (f : A -> B)
+                (v1 : Vector i A)
+                (v2 : Vector j A)
+  : map f (concat v1 v2) = concat (map f v1) (map f v2) =>
+  vector_ind (\lam n v => map f (concat v v2) = concat (map f v) (map f v2))
+             (transportMap f (concat.zero+idempotent j) v2)
+             (\lam a n v hyp =>
+                 transport (\lam x => map f (transport (\lam (k : Nat) => Vector k A) (inv (concat.suc_linear n j)) (Cons a (concat v v2)))
+                   =
+                 transport (\lam (k : Nat) => Vector k B) (inv (concat.suc_linear n j)) (Cons (f a) x))
+                           hyp
+                           (transportMap f (inv (concat.suc_linear n j)) (Cons a (concat v v2))))
+             i
+             v1

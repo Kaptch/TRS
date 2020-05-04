@@ -1,6 +1,6 @@
 \import TRS.Signature
 \import TRS.Term
-\import Data.Vector
+\import Data.Vector \hiding (length)
 \import Paths
 \import Logic
 \open Nat
@@ -9,7 +9,7 @@
   | Hole
   | Cont (f : S.symbol)
          (i j : Nat)
-         (p : i + suc(j) = S.arity f)
+         (p : i + suc(j) = arity f)
          (t1 : Vector i (Term S V))
          (c : Context S V)
          (t2 : Vector j (Term S V))
@@ -21,7 +21,7 @@
                   (P1 : \Pi (c : Context S V)
                             (f : S.symbol)
                             (i j : Nat)
-                            (p : i + suc(j) = S.arity f)
+                            (p : i + suc(j) = arity f)
                             (t1 : Vector i (Term S V))
                             (t2 : Vector j (Term S V)) ->
                       P c ->
@@ -48,7 +48,7 @@
   | Hole, c => c
   | Cont f i j p t1 c1 t2, c2 => Cont f i j p t1 (composition c1 c2) t2
 
-\func fillfill {S : Signature}
+\func fillFill {S : Signature}
                {V : \Set}
                (c1 : Context S V)
                (c2 : Context S V)
