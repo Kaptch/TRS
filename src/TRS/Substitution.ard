@@ -148,6 +148,60 @@
               (\lam c f i j p t1 t2 hyp => {?})
               c
 
+-- Fun f (substituteVec s (transport (\lam k => Vector k (Term S V)) p (concat t1 (Cons (fill c t) t2))))
+-- =
+-- Fun f (transport (\lam k => Vector k (Term S V)) p (concat (substituteVec s t1) (Cons (fill (substituteContext s c) (substitute s t)) (substituteVec s t2))))
+
+-- pmap (Fun f)
+
+-- substituteVec s (transport (\lam k => Vector k (Term S V)) p (concat t1 (Cons (fill c t) t2)))
+-- =
+-- transport (\lam k => Vector k (Term S V)) p (concat (substituteVec s t1) (Cons (fill (substituteContext s c) (substitute s t)) (substituteVec s t2)))
+
+-- substituteVecMap
+
+-- map (substitute s) (transport (\lam k => Vector k (Term S V)) p (concat t1 (Cons (fill c t) t2)))
+-- =
+-- transport (\lam k => Vector k (Term S V)) p (concat (substituteVec s t1) (Cons (fill (substituteContext s c) (substitute s t)) (substituteVec s t2)))
+
+-- transportMap
+
+-- transport (\lam k => Vector k (Term S V)) p (map (substitute s) (concat t1 (Cons (fill c t) t2)))
+-- =
+-- transport (\lam k => Vector k (Term S V)) p (concat (substituteVec s t1) (Cons (fill (substituteContext s c) (substitute s t)) (substituteVec s t2)))
+
+-- pmap (transport (\lam k => Vector k (Term S V)) p)
+
+-- map (substitute s) (concat t1 (Cons (fill c t) t2))
+-- =
+-- concat (substituteVec s t1) (Cons (fill (substituteContext s c) (substitute s t)) (substituteVec s t2))
+
+-- hyp
+
+-- map (substitute s) (concat t1 (Cons (fill c t) t2))
+-- =
+-- concat (substituteVec s t1) (Cons (substitute s (fill c t)) (substituteVec s t2))
+
+-- substituteVecMap 2
+
+-- map (substitute s) (concat t1 (Cons (fill c t) t2))
+-- =
+-- concat (map (substitute s) t1) (Cons (substitute s (fill c t)) (map (substitute s) t2))
+
+-- consMap
+
+-- map (substitute s) (concat t1 (Cons (fill c t) t2))
+-- =
+-- concat (map (substitute s) t1) (map (substitute s) (Cons (fill c t) t2))
+
+-- concatMap
+
+-- map (substitute s) (concat t1 (Cons (fill c t) t2))
+-- =
+-- map (substitute s) (concat t1 (Cons (fill c t) t2))
+
+-- idp
+
 \func consSubstituteVec {S : Signature}
                         {V : \Set}
                         {i : Nat}
