@@ -2,6 +2,7 @@
 \import Logic
 \import Paths
 \import Paths.Meta
+\import Set
 \import TRS.Context
 \import TRS.Signature
 \import TRS.Term
@@ -14,10 +15,33 @@
   : \Type =>
   V -> Term S V
 
-\func id  {S : Signature}
-          {V : \Set}
+\func extends {S : Signature}
+              {V : \Set}
+              (s1 s2 : substitution {S} {V})
+  : \Prop =>
+  \Pi (x : V) -> (Not (s2 x = Var x)) -> s1 x = s2 x
+
+\func extends' {S : Signature}
+               {V : \Set}
+               (s1 s2 : substitution {S} {V})
+  : \Prop =>
+  TruncP (\Sigma (q : substitution {S} {V})
+                 (s2 = composition s1 q))
+
+\func id {S : Signature}
+         {V : \Set}
   : substitution {S} {V} =>
   \lam (x : V) => Var x
+
+\func single {S : Signature}
+             {V : DecSet}
+             (x : V)
+             (y : V)
+  : substitution {S} {V} =>
+  \lam a => \case decideEq a x \with {
+    | yes _ => Var y
+    | no _ => Var a
+  }
 
 \func substitute {S : Signature}
                  {V : \Set}

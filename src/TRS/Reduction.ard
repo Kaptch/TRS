@@ -24,7 +24,7 @@
   \Pi (r : rel a b) ->
       incl (vars b).2 (vars a).2
 
-\record reductionRule {S : Signature}
+\record RewritingRule {S : Signature}
                       {V : \Set}
 {
   | rule : relation (Term S V)
@@ -50,9 +50,9 @@
           r x y ->
           r (substitute delta x) (substitute delta y)
 
-\func reductionStep {S : Signature}
+\func ReductionRule {S : Signature}
                     {V : \Set}
-                    (r : reductionRule {S} {V})
+                    (r : RewritingRule {S} {V})
                     (x y : Term S V)
   : \Prop =>
   TruncP (\Sigma (x' y' : Term S V)
@@ -64,21 +64,21 @@
 
 \func reductionStepIsRule {S : Signature}
                           {V : \Set}
-                          (r : reductionRule {S} {V})
+                          (r : RewritingRule {S} {V})
                           (c : Context S V)
                           (s : substitution {S} {V})
                           {x y : Term S V}
                           (rel : r.rule x y)
-  : reductionStep r (fill c (substitute s x)) (fill c (substitute s y)) =>
+  : ReductionRule r (fill c (substitute s x)) (fill c (substitute s y)) =>
   inP (x, y, rel, c, s, idp, idp)
 
 \func reductionStepMonotonic {S : Signature}
                              {V : \Set}
-                             (r : reductionRule {S} {V})
-  : monotonic (reductionStep r) =>
+                             (r : RewritingRule {S} {V})
+  : monotonic (ReductionRule r) =>
   \lam (x y : Term S V) =>
       \lam (c : Context S V) =>
-          \lam (rr : reductionStep r x y) =>
+          \lam (rr : ReductionRule r x y) =>
               \scase rr \with {
                 | inP a =>
                   inP (a.1,
@@ -92,24 +92,24 @@
 
 \func reductionStepStable {S : Signature}
                           {V : \Set}
-                          (r : reductionRule {S} {V})
-  : stable (reductionStep r) =>
+                          (r : RewritingRule {S} {V})
+  : stable (ReductionRule r) =>
   \lam (x y : Term S V) =>
       \lam (delta : substitution {S} {V}) =>
-          \lam (rr : reductionStep r x y) =>
+          \lam (rr : ReductionRule r x y) =>
               \scase rr \with {
                 | inP a =>
                   \let
                     | A => transport2
-                        (\lam x' y' => reductionStep r (substitute delta x') (substitute delta y'))
+                        (\lam x' y' => ReductionRule r (substitute delta x') (substitute delta y'))
                         (inv a.6)
                         (inv a.7)
                     | B => transport2
-                        (\lam x' y' => reductionStep r x' y')
+                        (\lam x' y' => ReductionRule r x' y')
                         (inv (substituteFill (substitute a.5 a.1) delta a.4))
                         (inv (substituteFill (substitute a.5 a.2) delta a.4))
                     | C => transport2
-                        (\lam x' y' => reductionStep r (fill (substituteContext delta a.4) x') (fill (substituteContext delta a.4) y'))
+                        (\lam x' y' => ReductionRule r (fill (substituteContext delta a.4) x') (fill (substituteContext delta a.4) y'))
                         (inv (substituteSubstitute delta a.5 a.1))
                         (inv (substituteSubstitute delta a.5 a.2))
                     | D => reductionStepIsRule

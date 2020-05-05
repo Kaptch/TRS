@@ -1,0 +1,50 @@
+\import Logic
+\import Paths
+\import Set
+\import TRS.Signature
+\import TRS.Substitution
+\import TRS.Term
+
+\func isUnifier {S : Signature}
+                {V : \Set}
+                (s : substitution {S} {V})
+                (t1 t2 : Term S V)
+  : \Prop =>
+  substitute s t1 = substitute s t2
+
+\func unifiable {S : Signature}
+                {V : \Set}
+                (t1 t2 : Term S V)
+  : \Prop =>
+  TruncP (\Sigma (s : substitution {S} {V})
+                 (isUnifier s t1 t2))
+
+\func isMGU {S : Signature}
+            {V : \Set}
+            (s : substitution {S} {V})
+            (t1 t2 : Term S V)
+  : \Prop =>
+  TruncP (\Sigma (isUnifier s t1 t2)
+                 (\Pi (q : substitution {S} {V}) -> isUnifier q t1 t2 -> extends q s))
+
+\func isMGU' {S : Signature}
+             {V : \Set}
+             (s : substitution {S} {V})
+             (t1 t2 : Term S V)
+  : \Prop =>
+  TruncP (\Sigma (isUnifier s t1 t2)
+                 (\Pi (q : substitution {S} {V}) -> isUnifier q t1 t2 -> extends' q s))
+
+\func unification {S : Signature}
+                  {V : DecSet}
+                  (t1 t2 : Term S V)
+                  (u : unifiable t1 t2)
+  : TruncP (\Sigma (s : substitution {S} {V})
+                   (isMGU s t1 t2))
+  | Var v1, Var v2, inP a => \case decideEq v1 v2 \with {
+    | yes e => inP (id, inP (pmap (substitute id) (pmap Var e), \lam q u x n => absurd (n idp)))
+    | no n => inP (single v1 v2, inP ({?}, {?}))
+  }
+  | Var v1, Fun f2 v2, inP a => {?}
+  | Fun f1 v1, Var v2, inP a => {?}
+  | Fun f1 v1, Fun f2 v2, inP a => {?}
