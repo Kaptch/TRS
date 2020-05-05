@@ -135,8 +135,6 @@
   | _, Hole => Hole
   | s, Cont f i j p t1 c' t2 => Cont f i j p (substitute.substituteVec s t1) (substituteContext s c') (substitute.substituteVec s t2)
 
--- TODO
-
 \func substituteFill {S : Signature}
                      {V : \Set}
                      (t : Term S V)
@@ -145,62 +143,20 @@
   : substitute s (fill c t) = fill (substituteContext s c) (substitute s t) =>
   context_ind (\lam x => substitute s (fill x t) = fill (substituteContext s x) (substitute s t))
               idp
-              (\lam c f i j p t1 t2 hyp => {?})
+              (\lam c f i j p t1 t2 hyp =>
+                  \let
+                    | A => idp {_} {map (substitute s) (concat t1 (Cons (fill c t) t2))}
+                    | B => A *> (concatMap (substitute s) t1 (Cons (fill c t) t2))
+                    | C => transport (\lam x => map (substitute s) (concat t1 (Cons (fill c t) t2)) = concat (map (substitute s) t1) x) (consMap (substitute s) (fill c t) t2) B
+                    | D => transport (\lam x => map (substitute s) (concat t1 (Cons (fill c t) t2)) = concat x (Cons (substitute s (fill c t)) (map (substitute s) t2))) (inv (substituteVecMap s t1)) C
+                    | E => transport (\lam x => map (substitute s) (concat t1 (Cons (fill c t) t2)) = concat (substitute.substituteVec s t1) (Cons (substitute s (fill c t)) x)) (inv (substituteVecMap s t2)) D
+                    | F => transport (\lam x => map (substitute s) (concat t1 (Cons (fill c t) t2)) = concat (substitute.substituteVec s t1) (Cons x (substitute.substituteVec s t2))) hyp E
+                    | G => pmap (transport (\lam k => Vector k (Term S V)) p) F
+                    | H => (transportMap (substitute s) p (concat t1 (Cons (fill c t) t2))) *> G
+                    | I => (substituteVecMap s (transport (\lam k => Vector k (Term S V)) p (concat t1 (Cons (fill c t) t2)))) *> H
+                    | J => pmap (Fun f) I
+                  \in J)
               c
-
--- Fun f (substituteVec s (transport (\lam k => Vector k (Term S V)) p (concat t1 (Cons (fill c t) t2))))
--- =
--- Fun f (transport (\lam k => Vector k (Term S V)) p (concat (substituteVec s t1) (Cons (fill (substituteContext s c) (substitute s t)) (substituteVec s t2))))
-
--- pmap (Fun f)
-
--- substituteVec s (transport (\lam k => Vector k (Term S V)) p (concat t1 (Cons (fill c t) t2)))
--- =
--- transport (\lam k => Vector k (Term S V)) p (concat (substituteVec s t1) (Cons (fill (substituteContext s c) (substitute s t)) (substituteVec s t2)))
-
--- substituteVecMap
-
--- map (substitute s) (transport (\lam k => Vector k (Term S V)) p (concat t1 (Cons (fill c t) t2)))
--- =
--- transport (\lam k => Vector k (Term S V)) p (concat (substituteVec s t1) (Cons (fill (substituteContext s c) (substitute s t)) (substituteVec s t2)))
-
--- transportMap
-
--- transport (\lam k => Vector k (Term S V)) p (map (substitute s) (concat t1 (Cons (fill c t) t2)))
--- =
--- transport (\lam k => Vector k (Term S V)) p (concat (substituteVec s t1) (Cons (fill (substituteContext s c) (substitute s t)) (substituteVec s t2)))
-
--- pmap (transport (\lam k => Vector k (Term S V)) p)
-
--- map (substitute s) (concat t1 (Cons (fill c t) t2))
--- =
--- concat (substituteVec s t1) (Cons (fill (substituteContext s c) (substitute s t)) (substituteVec s t2))
-
--- hyp
-
--- map (substitute s) (concat t1 (Cons (fill c t) t2))
--- =
--- concat (substituteVec s t1) (Cons (substitute s (fill c t)) (substituteVec s t2))
-
--- substituteVecMap 2
-
--- map (substitute s) (concat t1 (Cons (fill c t) t2))
--- =
--- concat (map (substitute s) t1) (Cons (substitute s (fill c t)) (map (substitute s) t2))
-
--- consMap
-
--- map (substitute s) (concat t1 (Cons (fill c t) t2))
--- =
--- concat (map (substitute s) t1) (map (substitute s) (Cons (fill c t) t2))
-
--- concatMap
-
--- map (substitute s) (concat t1 (Cons (fill c t) t2))
--- =
--- map (substitute s) (concat t1 (Cons (fill c t) t2))
-
--- idp
 
 \func consSubstituteVec {S : Signature}
                         {V : \Set}
