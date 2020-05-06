@@ -1,4 +1,5 @@
 \import Function.Meta
+\import HLevel
 \import Logic
 \import Paths
 \import Paths.Meta
@@ -36,11 +37,61 @@
 \func single {S : Signature}
              {V : DecSet}
              (x : V)
-             (y : V)
+             (y : Term S V)
   : substitution {S} {V} =>
-  \lam a => \case decideEq a x \with {
-    | yes _ => Var y
-    | no _ => Var a
+  \lam a => signleDecide x y a (decideEq a x)
+  \where
+    \func signleDecide {S : Signature}
+                       {V : DecSet}
+                       (x : V)
+                       (y : Term S V)
+                       (a : V)
+                       (d : Dec (a = x))
+      : Term S V
+      | x, y, a, yes _ => y
+      | x, y, a, no _ => Var a
+
+\func singleElimEq {S : Signature}
+                   {V : DecSet}
+                   (x : V)
+                   (y : Term S V)
+  : substitute (single {S} x y) (Var x) = y =>
+  rewrite (_help1 x y (decideEq x x)) idp
+  \where {
+    \func _help1 {S : Signature}
+                 {V : DecSet}
+                 (x : V)
+                 (y : Term S V)
+                 (d : (Dec (x = x)))
+      : single.signleDecide x y x d = y => rewrite (_help2 x d) idp
+
+    \func _help2 {V : DecSet}
+                 (x : V)
+                 (d : Dec (x = x))
+      : d = yes idp
+      | x, yes e => transportInv (\lam q => yes q = yes (idp {_} {x})) (Path.inProp e idp) idp
+      | x, no n => absurd (n idp)
+  }
+
+\func singleElimNotEq {S : Signature}
+                      {V : DecSet}
+                      (x : V)
+                      (y : Term S V)
+                      (z : V)
+                      (n : Not (x = z))
+  : substitute (single {S} x y) (Var z) = Var z =>
+  rewrite (_help1 x y z n (decideEq z x)) idp
+  \where {
+    \func _help1 {S : Signature}
+                 {V : DecSet}
+                 (x : V)
+                 (y : Term S V)
+                 (z : V)
+                 (n : Not (x = z))
+                 (d : (Dec (z = x)))
+      : single.signleDecide x y z d = Var z
+      | _, _, _, n, yes e => absurd (n (inv e))
+      | _, _, _, _, no _ => idp
   }
 
 \func substitute {S : Signature}
