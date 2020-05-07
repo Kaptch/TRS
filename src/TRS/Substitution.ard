@@ -51,10 +51,10 @@
       | x, y, a, yes _ => y
       | x, y, a, no _ => Var a
 
-\func singleElimEq {S : Signature}
-                   {V : DecSet}
-                   (x : V)
-                   (y : Term S V)
+\func singleSubsElimEq {S : Signature}
+                       {V : DecSet}
+                       (x : V)
+                       (y : Term S V)
   : substitute (single {S} x y) (Var x) = y =>
   rewrite (_help1 x y (decideEq x x)) idp
   \where {
@@ -73,12 +73,12 @@
       | x, no n => absurd (n idp)
   }
 
-\func singleElimNotEq {S : Signature}
-                      {V : DecSet}
-                      (x : V)
-                      (y : Term S V)
-                      (z : V)
-                      (n : Not (x = z))
+\func singleSubsElimNotEq {S : Signature}
+                          {V : DecSet}
+                          (x : V)
+                          (y : Term S V)
+                          (z : V)
+                          (n : Not (x = z))
   : substitute (single {S} x y) (Var z) = Var z =>
   rewrite (_help1 x y z n (decideEq z x)) idp
   \where {
@@ -93,6 +93,20 @@
       | _, _, _, n, yes e => absurd (n (inv e))
       | _, _, _, _, no _ => idp
   }
+
+\func singleElimEq {S : Signature}
+                   {V : DecSet}
+                   (x : V)
+                   (y : Term S V)
+  : single x y x = y => rewrite (singleSubsElimEq._help1 x y (decideEq x x)) idp
+
+\func singleElimNotEq {S : Signature}
+                      {V : DecSet}
+                      (x : V)
+                      (y : Term S V)
+                      (z : V)
+                      (n : Not (x = z))
+  : single x y z = Var z => rewrite (singleSubsElimNotEq._help1 x y z n (decideEq z x)) idp
 
 \func substitute {S : Signature}
                  {V : \Set}

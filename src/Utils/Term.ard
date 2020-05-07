@@ -1,4 +1,7 @@
+\import Data.Unit
 \import Data.Vector
+\import Equiv
+\import Equiv.Univalence
 \import Logic
 \import Paths
 \import Set
@@ -6,6 +9,22 @@
 \import TRS.Term
 \import Utils.Nat
 \import Utils.Vector
+
+\func termUnit {S : Signature}
+               {V : \Set}
+               (t : Term S V)
+  : \Type
+  | Var _ => Unit
+  | Fun _ _ => Empty
+
+\func contradictionNotEq {S : Signature}
+                         {V : \Set}
+                         {x : V}
+                         {f : S.symbol}
+                         {v : Vector (S.arity f) (Term S V)}
+                         (p : Var x = Fun f v)
+  : Empty =>
+  Map.f {=-to-Equiv (pmap termUnit p)} T
 
 \instance TermDecSet
   {S : Signature}

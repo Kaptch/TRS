@@ -1,0 +1,107 @@
+\import Data.Vector (Vector)
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Set
+\import Set.Fin
+\import TRS.Signature
+\import TRS.Term
+\import Utils.Term
+
+\func finiteDomain {S : Signature}
+                   {V : \Set}
+                   (f : V -> Term S V)
+  : \Prop =>
+  TruncP (\Sigma (n : Nat)
+                 (g : Fin n -> V)
+                 (m : \Pi (i : Fin n) -> Not (f = Var) -> Not (f (g i) = Var (g i))))
+
+\func domain {S : Signature}
+             {V : \Set}
+             (f : V -> Term S V)
+             (p : finiteDomain f)
+  : TruncP (\Sigma (n : Nat)
+                   (g : Fin n -> V))
+  | f, inP a => inP (a.1, a.2)
+
+\func substitution {S : Signature}
+                   {V : \Set}
+  : \Type =>
+  \Sigma (delta : V -> Term S V)
+         (finiteDomain delta)
+
+\func id {S : Signature}
+         {V : \Set}
+  : substitution {S} {V} =>
+  (Var, inP (zero, fin0-absurd, \lam x n => fin0-absurd x))
+
+\func single {S : Signature}
+             {V : DecSet}
+             (x : V)
+             (y : Term S V)
+  : substitution {S} {V}
+  | x, y => (\lam a => signleDecide x y a (decideEq a x), inP (1, gProof x, mProof x y))
+  \where {
+    \func signleDecide {S : Signature}
+                       {V : DecSet}
+                       (x : V)
+                       (y : Term S V)
+                       (a : V)
+                       (d : Dec (a = x))
+      : Term S V
+      | x, y, a, yes _ => y
+      | x, y, a, no _ => Var a
+
+    \func singleDecideEq {S : Signature}
+                         {V : DecSet}
+                         (x : V)
+                         (y : Term S V)
+                         (d : (Dec (x = x)))
+      : single.signleDecide x y x d = y => rewrite (decEqRefl x d) idp
+
+    \func singleDecideFunEq {S : Signature}
+                            {V : DecSet}
+                            (x : V)
+                            (f : S.symbol)
+                            (v : Vector (arity f) (Term S V))
+      : signleDecide x (Fun f v) x (decideEq x x) = Fun f v => rewrite (singleDecideEq x (Fun f v) (decideEq x x)) idp
+
+    \func decEqRefl {V : DecSet}
+                    (x : V)
+                    (d : Dec (x = x))
+      : d = yes idp
+      | x, yes e => transportInv (\lam q => yes q = yes (idp {_} {x})) (Path.inProp e idp) idp
+      | x, no n => absurd (n idp)
+
+    \func singleDecideNotEq {S : Signature}
+                            {V : DecSet}
+                            (x : V)
+                            (y : Term S V)
+                            (z : V)
+                            (n : Not (x = z))
+                            (d : (Dec (z = x)))
+      : single.signleDecide x y z d = Var z
+      | _, _, _, n, yes e => absurd (n (inv e))
+      | _, _, _, _, no _ => idp
+
+    \func gProof {V : DecSet}
+                 (x : V)
+                 (f : Fin 1)
+      : V
+      | x, fzero => x
+      | x, fsuc f => x
+
+    \func mProof {S : Signature}
+                 {V : DecSet}
+                 (x : V)
+                 (y : Term S V)
+                 (i : Fin 1)
+                 (h : Not ((\lam a => signleDecide x y a (V.decideEq a x)) = Var))
+      :  Not (signleDecide x y (gProof x i) (V.decideEq (gProof x i) x) = Var (gProof x i))
+      | x, Var v, fzero, h => \case decideEq v x \with {
+        | yes e => \lam r => h {?}
+        | no n => {?}
+      }
+      | _, _, fsuc i, _ => fin0-absurd i
+      | x, Fun f v, fzero, h => \lam n => contradictionNotEq (inv (transport (\lam r => r = Var x) (singleDecideFunEq x f v) n))
+  }

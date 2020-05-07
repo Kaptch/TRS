@@ -43,14 +43,20 @@
   : TruncP (\Sigma (s : substitution {S} {V})
                    (isMGU s t1 t2))
   | {S}, {V}, Var v1, Var v2, inP a => \case decideEq v1 v2 \with {
-    | yes e => inP (id, inP (pmap (substitute id) (pmap Var e), \lam q u x n => absurd (n idp)))
+    | yes e => inP (id, inP (pmap (substitute id) (pmap Var e), \lam _ _ _ n => absurd (n idp)))
     | no n =>
       \let
-        | A => transportInv (\lam x => x = Var v2) (singleElimEq {S} v1 (Var v2)) idp
-        | B => transportInv (\lam x => substitute (single v1 (Var v2)) (Var v1) = x) (singleElimNotEq v1 (Var v2) v2 n) A
+        | A => transportInv (\lam x => x = Var v2) (singleSubsElimEq {S} v1 (Var v2)) idp
+        | B => transportInv (\lam x => substitute (single v1 (Var v2)) (Var v1) = x) (singleSubsElimNotEq v1 (Var v2) v2 n) A
       \in
-        inP (single v1 (Var v2), inP (B, {?}))
+        inP (single v1 (Var v2), inP (B, (\lam q' u' x' n' => \case decideEq x' v1, decideEq x' v2 \with {
+          | yes e1, yes e2 =>
+            absurd (n' (transportInv (\lam r => single v1 (Var v2) x' = Var r) e2 (transportInv (\lam r => single v1 (Var v2) r = Var v2) e1 (singleElimEq v1 (Var v2)))))
+          | yes e1, no n2 => {?}
+          | no n1, yes e2 => {?}
+          | no n1, no n2 => {?}
+        })))
   }
-  | Var v1, Fun f2 v2, inP a => {?}
-  | Fun f1 v1, Var v2, inP a => {?}
+  | Var v1, Fun f2 v2, inP a => inP (single v1 (Fun f2 v2), {?})
+  | Fun f1 v1, Var v2, inP a => inP (single v2 (Fun f1 v1), {?})
   | Fun f1 v1, Fun f2 v2, inP a => {?}
