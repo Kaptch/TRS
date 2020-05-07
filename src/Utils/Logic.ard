@@ -1,0 +1,11 @@
+\import Logic
+
+\func NotOrLeft {A B : \Type}
+                (n : Not (A || B))
+  : Not A =>
+  \lam a => n (byLeft a)
+
+\func NotOrRight {A B : \Type}
+                 (n : Not (A || B))
+  : Not B =>
+  \lam b => n (byRight b)

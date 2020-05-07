@@ -1,0 +1,35 @@
+\import Data.Vector
+\import Logic
+\import Paths
+\import Set
+\import TRS.Signature
+\import TRS.Term
+\import Utils.Nat
+\import Utils.Vector
+
+\instance TermDecSet
+  {S : Signature}
+  {V : DecSet}
+: DecSet (Term S V)
+  | # => apartness
+  | #-irreflexive => {?}
+  | #-symmetric => {?}
+  | #-comparison => {?}
+  | tightness => {?}
+  | decideEq => {?}
+  \where {
+    \func apartness {S : Signature}
+                    {V : DecSet}
+                    (t1 : Term S V)
+                    (t2 : Term S V)
+      : \Prop
+      | Var v1, Var v2 => v1 # v2
+      | Var v1, Fun f2 v2 => Empty
+      | Fun f1 v1, Var v2 => Empty
+      | Fun f1 v1, Fun f2 v2 =>
+        (f1 # f2) ||
+        (arity f1 NatDecSet.# arity f2) ||
+        (\Pi (p : arity f1 = arity f2) -> v1 VectorDecSet.# (transportInv (\lam x => Vector x _) p v2))
+
+    -- ???
+  }

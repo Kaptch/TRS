@@ -1,0 +1,2 @@
+\truncated \data \infixr 3 && (A B : \Type) : \Prop
+  | Prod (a : A) (b : B)

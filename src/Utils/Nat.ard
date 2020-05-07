@@ -1,0 +1,74 @@
+\import Arith.Nat
+\import Data.Unit
+\import Equiv
+\import Equiv.Univalence
+\import Function
+\import Logic
+\import Paths
+\import Set
+
+\func natUnit (n : Nat)
+  : \Type
+  | 0 => Unit
+  | suc n => Empty
+
+\func contradictionNotEq {n : Nat} (p : 0 = suc n)
+  : Empty =>
+  Map.f {=-to-Equiv (pmap natUnit p)} T
+
+\instance NatDecSet : DecSet Nat
+  | # => apartness
+  | #-irreflexive => irreflexive
+  | #-symmetric => symmetric
+  | #-comparison => comparison
+  | tightness => tightness'
+  | decideEq => decideEq'
+  \where {
+    \func apartness (n1 : Nat)
+                    (n2 : Nat)
+      : \Prop
+      | 0, 0 => Empty
+      | 0, suc n2 => Unit
+      | suc n1, 0 => Unit
+      | suc n1, suc n2 => apartness n1 n2
+
+    \func irreflexive (x : Nat)
+      : Not (apartness x x)
+      | 0 => id
+      | suc x => irreflexive x
+
+    \func symmetric (x y : Nat)
+                    (a : apartness x y)
+      : apartness y x
+      | 0, suc y, T => T
+      | suc x, 0, T => T
+      | suc x, suc y, a => symmetric x y a
+
+    \func comparison (x y z : Nat)
+                     (a : apartness x z)
+      : apartness x y || apartness y z
+      | 0, 0, suc z, T => byRight T
+      | 0, suc y, suc z, T => byLeft T
+      | suc x, 0, 0, T => byLeft T
+      | suc x, 0, suc z, a => byLeft T
+      | suc x, suc y, 0, T => byRight T
+      | suc x, suc y, suc z, a => comparison x y z a
+
+    \func tightness' (x y : Nat)
+                     (n : Not (apartness x y))
+      : x = y
+      | 0, 0, n => idp
+      | 0, suc y, n => absurd (n T)
+      | suc x, 0, n => absurd (n T)
+      | suc x, suc y, n => pmap suc (tightness' x y n)
+
+    \func decideEq' (x y : Nat)
+      : Dec (x = y)
+      | 0, 0 => yes idp
+      | 0, suc y => no (\lam p => contradictionNotEq p)
+      | suc x, 0 => no (\lam p => contradictionNotEq (inv p))
+      | suc x, suc y => \case decideEq' x y \with {
+        | yes e => yes (pmap suc e)
+        | no n => no (n o (pmap pred))
+      }
+  }
