@@ -113,6 +113,15 @@
   | {A}, {0}, x, Nil => Empty
   | {A}, {suc n}, x, Cons a' v' => (x = a') || in x v'
 
+-- Inductive In
+--\data In {A : \Type}
+--         {i : Nat}
+--         (x : A)
+--         (v : Vector i A) \elim i, v
+--  | 0, Nil => No Empty
+--  | suc n, Cons x tl => Yes
+--  | suc n, Cons hd tl => Maybe (In x tl)
+
 \func inclusion {A : \Type}
                 {i j : Nat}
                 (v1 : Vector i A)

@@ -1,70 +1,14 @@
 \import Data.Vector
-\import Function
-\import Logic
+\import Equiv
 \import Paths
+\import Paths.Meta
 \import Set
-\import Utils.Logic
 
 \instance VectorDecSet {A : DecSet}
                        {i : Nat}
-: DecSet (Vector i A)
-  | # => apartness
-  | #-irreflexive => irreflexive
-  | #-symmetric => symmetric
-  | #-comparison => comparison
-  | tightness => tightness'
+: DecSet.Impl (Vector i A)
   | decideEq => decideEq'
   \where {
-    \func apartness {A : DecSet}
-                    {i : Nat}
-                    (v1 : Vector i A)
-                    (v2 : Vector i A)
-      : \Prop
-      | {A}, {0}, Nil, Nil => Empty
-      | {A}, {suc i}, Cons a1 v1, Cons a2 v2 => (a1 # a2) || (apartness v1 v2)
-
-    \func irreflexive {A : DecSet}
-                      {i : Nat}
-                      (x : Vector i A)
-      : Not (apartness x x)
-      | {A}, {0}, Nil => id
-      | {A}, {suc i}, Cons head tail => \lam q => \case q \with {
-        | byLeft a => #-irreflexive head a
-        | byRight b => irreflexive tail b
-      }
-
-    \func symmetric {A : DecSet}
-                    {i : Nat}
-                    (x y : Vector i A)
-                    (a : apartness x y)
-      : apartness y x
-      | {A}, {0}, Nil, Nil, ()
-      | {A}, {suc i}, Cons head1 tail1, Cons head2 tail2, byLeft a => byLeft (#-symmetric head1 head2 a)
-      | {A}, {suc i}, Cons head1 tail1, Cons head2 tail2, byRight b => byRight (symmetric tail1 tail2 b)
-
-    \func comparison {A : DecSet}
-                     {i : Nat}
-                     (x y z : Vector i A)
-                     (a : apartness x z)
-      : apartness x y || apartness y z
-      | {A}, {0}, Nil, Nil, Nil, ()
-      | {A}, {suc i}, Cons head1 tail1, Cons head2 tail2, Cons head3 tail3, byLeft a => \case #-comparison head1 head2 head3 a \with {
-        | byLeft a' => byLeft (byLeft a')
-        | byRight b' => byRight (byLeft b')
-      }
-      | {A}, {suc i}, Cons head1 tail1, Cons head2 tail2, Cons head3 tail3, byRight b => \case comparison tail1 tail2 tail3 b \with {
-        | byLeft a' => byLeft (byRight a')
-        | byRight b' => byRight (byRight b')
-      }
-
-    \func tightness' {A : DecSet}
-                     {i : Nat}
-                     (x y : Vector i A)
-                     (n : Not (apartness x y))
-      : x = y
-      | {A}, {0}, Nil, Nil, n => idp
-      | {A}, {suc i}, Cons a1 x1, Cons a2 x2, n => pmap2 Cons (tightness a1 a2 (NotOrLeft n)) (tightness' x1 x2 (NotOrRight n))
-
     \func decideEq' {A : DecSet}
                     {i : Nat}
                     (x y : Vector i A)
@@ -81,3 +25,22 @@
           | no n1, no n2 => no (\lam q => n1 (pmap head q))
         }
   }
+
+\func vectorLengthEquiv {A : \Type}
+                        {i i' : Nat}
+                        (e : i = i')
+  : QEquiv \cowith
+  | A => Vector i A
+  | B => Vector i' A
+  | f => \lam v => transport (\lam r => Vector r A) e v
+  | ret => \lam v => transportInv (\lam r => Vector r A) e v
+  | ret_f x => Jl (\lam a p => transportInv (\lam (r : Nat) => Vector r A) p (transport (\lam (r : Nat) => Vector r A) p x) = x) idp e
+  | f_sec y =>
+    \let
+      | A => Jl (\lam a p =>
+          transport (\lam (r : Nat) => Vector r A) p (transportInv (\lam (r : Nat) => Vector r A) p (transport (\lam r => Vector r A) (inv e *> p) y))
+            =
+          (transport (\lam r => Vector r A) (inv e *> p) y))
+                idp
+                e
+    \in rewriteF (inv_*> e) A

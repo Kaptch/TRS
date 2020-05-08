@@ -115,7 +115,7 @@
                     | D => reductionStepIsRule
                         r
                         (substituteContext delta a.4)
-                        (compositionSub delta a.5)
+                        (compositionSub a.5 delta)
                         a.3
                   \in (A o B o C) D
               }

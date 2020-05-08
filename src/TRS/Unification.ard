@@ -5,6 +5,7 @@
 \import TRS.Signature
 \import TRS.Substitution
 \import TRS.Term
+\import Utils.Term
 
 \func isUnifier {S : Signature}
                 {V : \Set}
@@ -12,6 +13,20 @@
                 (t1 t2 : Term S V)
   : \Prop =>
   substitute s t1 = substitute s t2
+
+\func singleUnifiesVar {S : Signature}
+                       {V : DecSet}
+                       (v1 v2 : V)
+  : isUnifier (single {S} v1 (Var v2)) (Var v1) (Var v2) =>
+  \case decideEq v1 v2 \with {
+    | yes e => pmap (substitute (single v1 (Var v2))) (pmap Var e)
+    | no n =>
+      \let
+        | A => singleElimNotEq {S} v1 (Var v2) v2 n
+        | B => singleElimEq {S} v1 (Var v2)
+      \in
+        transportInv (\lam x => x = single v1 (Var v2) v2) B (transportInv (\lam x => Var v2 = x) A (idp {_} {Var {S} v2}))
+  }
 
 \func unifiable {S : Signature}
                 {V : \Set}
@@ -28,14 +43,6 @@
   TruncP (\Sigma (isUnifier s t1 t2)
                  (\Pi (q : substitution {S} {V}) -> isUnifier q t1 t2 -> extends q s))
 
-\func isMGU' {S : Signature}
-             {V : \Set}
-             (s : substitution {S} {V})
-             (t1 t2 : Term S V)
-  : \Prop =>
-  TruncP (\Sigma (isUnifier s t1 t2)
-                 (\Pi (q : substitution {S} {V}) -> isUnifier q t1 t2 -> extends' q s))
-
 \func unification {S : Signature}
                   {V : DecSet}
                   (t1 t2 : Term S V)
@@ -43,19 +50,13 @@
   : TruncP (\Sigma (s : substitution {S} {V})
                    (isMGU s t1 t2))
   | {S}, {V}, Var v1, Var v2, inP a => \case decideEq v1 v2 \with {
-    | yes e => inP (id, inP (pmap (substitute id) (pmap Var e), \lam _ _ _ n => absurd (n idp)))
+    | yes e => inP (id, inP (pmap (substitute id) (pmap Var e), \lam q' u' => inP (q', compositionId q')))
     | no n =>
       \let
         | A => transportInv (\lam x => x = Var v2) (singleSubsElimEq {S} v1 (Var v2)) idp
         | B => transportInv (\lam x => substitute (single v1 (Var v2)) (Var v1) = x) (singleSubsElimNotEq v1 (Var v2) v2 n) A
       \in
-        inP (single v1 (Var v2), inP (B, (\lam q' u' x' n' => \case decideEq x' v1, decideEq x' v2 \with {
-          | yes e1, yes e2 =>
-            absurd (n' (transportInv (\lam r => single v1 (Var v2) x' = Var r) e2 (transportInv (\lam r => single v1 (Var v2) r = Var v2) e1 (singleElimEq v1 (Var v2)))))
-          | yes e1, no n2 => {?}
-          | no n1, yes e2 => {?}
-          | no n1, no n2 => {?}
-        })))
+        inP (single v1 (Var v2), inP (singleUnifiesVar v1 v2, \lam q' u' => inP ({?}, {?})))
   }
   | Var v1, Fun f2 v2, inP a => inP (single v1 (Fun f2 v2), {?})
   | Fun f1 v1, Var v2, inP a => inP (single v2 (Fun f1 v1), {?})

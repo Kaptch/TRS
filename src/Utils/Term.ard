@@ -2,11 +2,14 @@
 \import Data.Vector
 \import Equiv
 \import Equiv.Univalence
+\import Function
 \import Logic
 \import Paths
+\import Paths.Meta
 \import Set
 \import TRS.Signature
 \import TRS.Term
+\import Utils.Logic
 \import Utils.Nat
 \import Utils.Vector
 
@@ -17,38 +20,137 @@
   | Var _ => Unit
   | Fun _ _ => Empty
 
-\func contradictionNotEq {S : Signature}
-                         {V : \Set}
-                         {x : V}
-                         {f : S.symbol}
-                         {v : Vector (S.arity f) (Term S V)}
-                         (p : Var x = Fun f v)
-  : Empty =>
-  Map.f {=-to-Equiv (pmap termUnit p)} T
+\func fromVar {S : Signature}
+              {V : \Set}
+              (v : V)
+              (t : Term S V)
+  : V
+  | v, Var v1 => v1
+  | v, Fun f v1 => v
+
+\func fromFunSym {S : Signature}
+                 {V : \Set}
+                 (f : S.symbol)
+                 (t : Term S V)
+  : S.symbol
+  | f, Var _ => f
+  | f, Fun f1 _ => f1
+
+\func fromFunVec {S : Signature}
+                 {V : \Set}
+                 {f : S.symbol}
+                 (v : Vector (arity f) (Term S V))
+                 (t : Term S V)
+  : Vector (arity f) (Term S V)
+  | {S}, {V}, {f}, v', Var _ => v'
+  | {S}, {V}, {f}, v', Fun f' v => \case decideEq (arity f) (arity f') \with {
+    | yes e => rewrite e v
+    | no n => v'
+  }
+
+  \where
+    \func fromFunVec' {S : Signature}
+                      {V : \Set}
+                      {f : S.symbol}
+                      {f' : S.symbol}
+                      (d : Dec (arity f = arity f'))
+                      (v : Vector (arity f) (Term S V))
+                      (v' : Vector (arity f') (Term S V))
+      : Vector (arity f') (Term S V)
+      | yes e, v, v' => rewriteI e v
+      | no n, v, v' => v'
 
 \instance TermDecSet
   {S : Signature}
   {V : DecSet}
-: DecSet (Term S V)
-  | # => apartness
-  | #-irreflexive => {?}
-  | #-symmetric => {?}
-  | #-comparison => {?}
-  | tightness => {?}
-  | decideEq => {?}
+: DecSet.Impl (Term S V)
+  | decideEq => decideEq'
   \where {
-    \func apartness {S : Signature}
+    \func decideEq' {S : Signature}
                     {V : DecSet}
                     (t1 : Term S V)
                     (t2 : Term S V)
-      : \Prop
-      | Var v1, Var v2 => v1 # v2
-      | Var v1, Fun f2 v2 => Empty
-      | Fun f1 v1, Var v2 => Empty
-      | Fun f1 v1, Fun f2 v2 =>
-        (f1 # f2) ||
-        (arity f1 NatDecSet.# arity f2) ||
-        (\Pi (p : arity f1 = arity f2) -> v1 VectorDecSet.# (transportInv (\lam x => Vector x _) p v2))
+      : Dec (t1 = t2)
+      | Var v1, Var v2 => \case decideEq v1 v2 \with {
+        | yes e => yes (pmap Var e)
+        | no n => no (\lam r => n (pmap (fromVar v1) r))
+      }
+      | Var v1, Fun f2 v2 => no (\lam p => Map.f {=-to-Equiv (pmap termUnit p)} T)
+      | Fun f1 v1, Var v2 => no (\lam r => Map.f {=-to-Equiv (pmap termUnit (inv r))} T)
+      | {S}, {V}, Fun f1 v1, Fun f2 v2 =>
+        \case decideEq f1 f2 \with {
+          | yes e =>
+            \case decideVecEq' v1 (transport (\lam (k : Nat) => Vector k (Term S V)) (inv (pmap arity e)) v2) \with {
+              | yes e' => yes ((pmap2Dep {_} {_} {\lam f => Vector (arity f) (Term _ _)} Fun e (_help1 v1 v2 (pmap arity e) e')))
+              | no n' => no (\lam r => n' (_help2 f1 f2 v1 v2 e r))
+            }
+          | no n => no (\lam r => n (pmap (fromFunSym f1) r))
+        }
+      \where {
+        \func decideVecEq' {S : Signature}
+                           {V : DecSet}
+                           {i : Nat}
+                           (x y : Vector i (Term S V))
+          : Dec (x = y)
+          | {S}, {V}, {0}, Nil, Nil => yes idp
+          | {S}, {V}, {suc i}, Cons a1 x1, Cons a2 x2 =>
+            \let
+              | A => decideEq' a1 a2
+              | B => decideVecEq' x1 x2
+            \in \case A, B \with {
+              | yes e1, yes e2 => yes (pmap2 Cons e1 e2)
+              | yes e1, no n2 => no (\lam q => n2 (pmap tail q))
+              | no n1, yes e2 => no (\lam q => n1 (pmap head q))
+              | no n1, no n2 => no (\lam q => n1 (pmap head q))
+            }
 
-    -- ???
+        \func pmap2Dep {A C : \Type}
+                       {B : A -> \Type}
+                       (f : \Pi (x : A) -> (B x) -> C)
+                       {a a' : A} (p : a = a')
+                       {b : B a}
+                       {b' : B a'}
+                       (q : Path (\lam i => B (p @ i)) b b')
+          : f a b = f a' b' =>
+          path (\lam i => f (p @ i) (q @ i))
+
+        \func _help1 {A : \Type}
+                     {i j : Nat}
+                     (v1 : Vector i A)
+                     (v2 : Vector j A)
+                     (e : i = j)
+                     (p : v1 = transport (\lam (k : Nat) => Vector k A) (inv e) v2)
+          : Path (\lam k => Vector (e @ k) A) v1 v2 =>
+          \let
+            | A =>
+              Jl (\lam a p => Path (\lam k => Vector (p @ k) A) v1 (transport (\lam x => Vector x A) (inv (inv p *> e)) v2)) (transport (\lam r => v1 = transport (\lam k => Vector k A) (inv r) v2) (inv (idp_*> e)) p) e
+            | B => rewriteI {2} (inv_*>) A
+          \in B
+
+        \func funVecToSigma {S : Signature}
+                            {V : \Set}
+                            (f : S.symbol)
+                            (v : Vector (arity f) (Term S V))
+                            (t : Term S V)
+          : \Sigma (i : Nat) (Vector i (Term S V))
+          | f, v, Var v1 => (arity f, v)
+          | f, v, Fun f1 v1 => (arity f1, v1)
+
+        \func _help2 {S : Signature}
+                     {V : \Set}
+                     (f1 f2 : S.symbol)
+                     (v1 : Vector (arity f1) (Term S V))
+                     (v2 : Vector (arity f2) (Term S V))
+                     (p : f1 = f2)
+                     (r : Fun f1 v1 = Fun f2 v2)
+          : v1 = transport (\lam (k : Nat) => Vector k (Term S V)) (inv (pmap S.arity p)) v2 =>
+          \let
+            | A => pmap (funVecToSigma f2 v2) r
+            | B => pmapd (\lam x => Vector x.1 _) (\lam x => x.2) (inv A)
+            | C => QEquiv-to-= (sigmaEquiv (\lam (x : Nat) => Vector x (Term S V)) (S.arity f2, v2) (S.arity f1, v1))
+            | D => rewriteF C (inv A)
+            | E => Path.inProp (inv (pmap arity p)) (pmap (\lam x => x.1) (inv A))
+            | F => rewrite E (D.2)
+          \in inv F
+      }
   }

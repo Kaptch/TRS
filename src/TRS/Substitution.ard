@@ -20,14 +20,8 @@
               {V : \Set}
               (s1 s2 : substitution {S} {V})
   : \Prop =>
-  \Pi (x : V) -> (Not (s2 x = Var x)) -> s1 x = s2 x
-
-\func extends' {S : Signature}
-               {V : \Set}
-               (s1 s2 : substitution {S} {V})
-  : \Prop =>
   TruncP (\Sigma (q : substitution {S} {V})
-                 (s2 = composition s1 q))
+                 (s1 = composition s2 q))
 
 \func id {S : Signature}
          {V : \Set}
@@ -130,17 +124,44 @@
                   (s1 : substitution {S} {V})
                   (s2 : substitution {S} {V})
   : substitution {S} {V} =>
-  \lam (v : V) => substitute s1 (s2 v)
+  \lam (v : V) => substitute s2 (s1 v)
+
+\func substituteId {S : Signature}
+                   {V : \Set}
+                   (t : Term S V)
+  : t = substitute id t
+  | Var v => idp
+  | Fun f v => pmap (Fun f) (substituteVecId v)
+  \where
+    \func substituteVecId {S : Signature}
+                          {V : \Set}
+                          {i : Nat}
+                          (v : Vector i (Term S V))
+      : v = substitute.substituteVec id v
+      | {S}, {V}, {0}, Vector.Nil => idp
+      | {S}, {V}, {suc i}, Vector.Cons a v => pmap2 Cons (substituteId a) (substituteVecId v)
+
+\func substituteVar {S : Signature}
+                    {V : \Set}
+                    (v : V)
+                    (s : substitution {S} {V})
+  : s v = substitute s (Var v) => idp
+
+\func compositionId {S : Signature}
+                    {V : \Set}
+                    (s : substitution {S} {V})
+  : s = composition id s =>
+  funExt (\lam _ => Term S V) s (composition id s) (\lam x => rewrite (substituteVar x s) idp)
 
 \func substituteSubstitute {S : Signature}
                            {V : \Set}
                            (s1 : substitution {S} {V})
                            (s2 : substitution {S} {V})
                            (t : Term S V)
-  : substitute s1 (substitute s2 t) = substitute (composition s1 s2) t =>
+  : substitute s1 (substitute s2 t) = substitute (composition s2 s1) t =>
   term_ind
-      (\lam t => substitute s1 (substitute s2 t) = substitute (composition s1 s2) t)
-      (\lam n => \lam v => substitute.substituteVec s1 (substitute.substituteVec s2 v) = substitute.substituteVec (composition s1 s2) v)
+      (\lam t => substitute s1 (substitute s2 t) = substitute (composition s2 s1) t)
+      (\lam n => \lam v => substitute.substituteVec s1 (substitute.substituteVec s2 v) = substitute.substituteVec (composition s2 s1) v)
       (\lam _ => idp)
       (\lam f => \lam v => \lam p => pmap (Fun f) p)
       idp
@@ -192,7 +213,7 @@
           \lam (r1 : subsumes x y) =>
               \lam (r2 : subsumes y z) => \scase r1, r2 \with {
                 | inP a', inP a'' =>
-                  inP (composition a'.1 a''.1, a'.2 *> pmap (substitute a'.1) a''.2 *> (help1 z a'.1 a''.1))
+                  inP (composition a''.1 a'.1, a'.2 *> pmap (substitute a'.1) a''.2 *> (help1 z a'.1 a''.1))
               }
       \where {
         \func help1  {S : Signature}
@@ -200,7 +221,7 @@
                      (x : Term S V)
                      (a1 : substitution {S} {V})
                      (a2 : substitution {S} {V})
-          : substitute a1 (substitute a2 x) = substitute (composition a1 a2) x
+          : substitute a1 (substitute a2 x) = substitute (composition a2 a1) x
           | Var v, a1, a2 => idp
           | Fun f v, a1, a2 => pmap (Fun f) (help2 v a1 a2)
 
@@ -210,7 +231,7 @@
                      (v : Vector i (Term S V))
                      (a1 : substitution {S} {V})
                      (a2 : substitution {S} {V})
-          : substitute.substituteVec a1 (substitute.substituteVec a2 v) = substitute.substituteVec (composition a1 a2) v
+          : substitute.substituteVec a1 (substitute.substituteVec a2 v) = substitute.substituteVec (composition a2 a1) v
           | {S}, {V}, {0}, Vector.Nil, a1, a2 => idp
           | {S}, {V}, {suc n}, Vector.Cons a' v', a1, a2 => pmap2 Cons (help1 a' a1 a2) (help2 v' a1 a2)
       }
