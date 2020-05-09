@@ -123,7 +123,9 @@
           : Path (\lam k => Vector (e @ k) A) v1 v2 =>
           \let
             | A =>
-              Jl (\lam a p => Path (\lam k => Vector (p @ k) A) v1 (transport (\lam x => Vector x A) (inv (inv p *> e)) v2)) (transport (\lam r => v1 = transport (\lam k => Vector k A) (inv r) v2) (inv (idp_*> e)) p) e
+              Jl (\lam a p => Path (\lam k => Vector (p @ k) A) v1 (transport (\lam x => Vector x A) (inv (inv p *> e)) v2))
+                 (transport (\lam r => v1 = transport (\lam k => Vector k A) (inv r) v2) (inv (idp_*> e)) p)
+                 e
             | B => rewriteI {2} (inv_*>) A
           \in B
 
@@ -149,8 +151,8 @@
             | B => pmapd (\lam x => Vector x.1 _) (\lam x => x.2) (inv A)
             | C => QEquiv-to-= (sigmaEquiv (\lam (x : Nat) => Vector x (Term S V)) (S.arity f2, v2) (S.arity f1, v1))
             | D => rewriteF C (inv A)
-            | E => Path.inProp (inv (pmap arity p)) (pmap (\lam x => x.1) (inv A))
-            | F => rewrite E (D.2)
+            | E => Path.inProp {arity f2 = arity f1} (inv (pmap arity p)) (pmap (\lam x => x.1) (inv A))
+            | F => rewrite E D.2
           \in inv F
       }
   }
