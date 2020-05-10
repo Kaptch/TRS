@@ -1,0 +1,5 @@
+\import Paths
+
+\func pmapdInv {A : \Type} (B : A -> \Type) (f : \Pi (x : A) -> B x) {a a' : A} (p : a' = a)
+  : f a = transport B p (f a') \elim p
+  | idp => idp

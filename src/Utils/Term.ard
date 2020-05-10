@@ -47,7 +47,6 @@
     | yes e => rewrite e v
     | no n => v'
   }
-
   \where
     \func fromFunVec' {S : Signature}
                       {V : \Set}
@@ -148,11 +147,10 @@
           : v1 = transport (\lam (k : Nat) => Vector k (Term S V)) (inv (pmap S.arity p)) v2 =>
           \let
             | A => pmap (funVecToSigma f2 v2) r
-            | B => pmapd (\lam x => Vector x.1 _) (\lam x => x.2) (inv A)
-            | C => QEquiv-to-= (sigmaEquiv (\lam (x : Nat) => Vector x (Term S V)) (S.arity f2, v2) (S.arity f1, v1))
-            | D => rewriteF C (inv A)
-            | E => Path.inProp {arity f2 = arity f1} (inv (pmap arity p)) (pmap (\lam x => x.1) (inv A))
-            | F => rewrite E D.2
-          \in inv F
+            | B => QEquiv-to-= (sigmaEquiv (\lam (x : Nat) => Vector x (Term S V)) (S.arity f2, v2) (S.arity f1, v1))
+            | C => rewriteF B (inv A)
+            | D => Path.inProp {arity f2 = arity f1} (inv (pmap arity p)) (pmap (\lam x => x.1) (inv A))
+            | E => rewrite D C.2
+          \in inv E
       }
   }

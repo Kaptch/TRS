@@ -1,0 +1,57 @@
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Set
+
+\func propDecider {A : \Type}
+                  (B : A -> \Prop)
+                  (D : \Pi (x : A) -> Dec (B x))
+                  (a : A)
+                  (b : Dec (B a))
+  : D a = b
+  | B, D, a, yes e => propDeciderYes {_} {B} D a e
+  | B, D, a, no n => propDeciderNo {_} {B} D a n
+
+\func propDeciderYes {A : \Type}
+                     {B : A -> \Prop}
+                     (D : \Pi (x : A) -> Dec (B x))
+                     (a : A)
+                     (b : B a)
+  : D a = yes b =>
+  \let
+    | fib => propFib {_} {B} D a b (D a)
+    | A => pmap yes (Path.inProp fib.1 b)
+    | B => rewrite fib.2 (pmap yes (Path.inProp fib.1 b))
+  \in B
+  \where
+    \func propFib {A : \Type}
+                  {B : A -> \Prop}
+                  (D : \Pi (x : A) -> Dec (B x))
+                  (a : A)
+                  (b : B a)
+                  (d : Dec (B a))
+      : \Sigma (x : B a) (d = yes x)
+      | D, a, b, yes e => (e, idp)
+      | D, a, b, no n => absurd (n b)
+
+\func propDeciderNo {A : \Type}
+                    {B : A -> \Prop}
+                    (D : \Pi (x : A) -> Dec (B x))
+                    (a : A)
+                    (b : Not (B a))
+  : D a = no b =>
+  \let
+    | fib => propFib {_} {B} D a b (D a)
+    | A => pmap yes (Path.inProp fib.1 b)
+    | B => rewrite fib.2 (pmap no (Path.inProp fib.1 b))
+  \in B
+  \where
+    \func propFib {A : \Type}
+                  {B : A -> \Prop}
+                  (D : \Pi (x : A) -> Dec (B x))
+                  (a : A)
+                  (b : Not (B a))
+                  (d : Dec (B a))
+      : \Sigma (x : Not (B a)) (d = no x)
+      | D, a, b, yes e => absurd (b e)
+      | D, a, b, no n => (n, idp)

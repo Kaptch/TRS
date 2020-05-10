@@ -9,6 +9,7 @@
 
 \data Term (S : Signature)
            (V : \Set)
+: \Set
   | Var (v : V)
   | Fun (f : S.symbol) (v : Vector (arity f) (Term S V))
 

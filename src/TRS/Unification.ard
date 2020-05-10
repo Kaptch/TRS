@@ -1,3 +1,7 @@
+\import Data.Unit
+\import Data.Vector (Vector)
+\import Equiv (QEquiv)
+\import Equiv.Univalence
 \import Logic
 \import Paths
 \import Paths.Meta
@@ -5,6 +9,8 @@
 \import TRS.Signature
 \import TRS.Substitution
 \import TRS.Term
+\import Utils.Dec
+\import Utils.Paths
 \import Utils.Term
 
 \func isUnifier {S : Signature}
@@ -13,20 +19,6 @@
                 (t1 t2 : Term S V)
   : \Prop =>
   substitute s t1 = substitute s t2
-
-\func singleUnifiesVar {S : Signature}
-                       {V : DecSet}
-                       (v1 v2 : V)
-  : isUnifier (single {S} v1 (Var v2)) (Var v1) (Var v2) =>
-  \case decideEq v1 v2 \with {
-    | yes e => pmap (substitute (single v1 (Var v2))) (pmap Var e)
-    | no n =>
-      \let
-        | A => singleElimNotEq {S} v1 (Var v2) v2 n
-        | B => singleElimEq {S} v1 (Var v2)
-      \in
-        transportInv (\lam x => x = single v1 (Var v2) v2) B (transportInv (\lam x => Var v2 = x) A (idp {_} {Var {S} v2}))
-  }
 
 \func unifiable {S : Signature}
                 {V : \Set}
@@ -50,14 +42,100 @@
   : TruncP (\Sigma (s : substitution {S} {V})
                    (isMGU s t1 t2))
   | {S}, {V}, Var v1, Var v2, inP a => \case decideEq v1 v2 \with {
-    | yes e => inP (id, inP (pmap (substitute id) (pmap Var e), \lam q' u' => inP (q', compositionId q')))
+    | yes e => inP (id, inP (pmap (substitute id) (pmap Var e), \lam q' u' =>
+        inP (q', compositionId q')))
     | no n =>
-      \let
-        | A => transportInv (\lam x => x = Var v2) (singleSubsElimEq {S} v1 (Var v2)) idp
-        | B => transportInv (\lam x => substitute (single v1 (Var v2)) (Var v1) = x) (singleSubsElimNotEq v1 (Var v2) v2 n) A
-      \in
-        inP (single v1 (Var v2), inP (singleUnifiesVar v1 v2, \lam q' u' => inP ({?}, {?})))
+      inP (single v1 (Var v2), inP (singleUnifiesVar v1 v2, \lam q' u' =>
+          inP (subst1 v1 v2 q', subst1Lemma1 v1 v2 q' u' n)))
   }
-  | Var v1, Fun f2 v2, inP a => inP (single v1 (Fun f2 v2), {?})
-  | Fun f1 v1, Var v2, inP a => inP (single v2 (Fun f1 v1), {?})
-  | Fun f1 v1, Fun f2 v2, inP a => {?}
+  | Var v1, Fun f2 v2, a => inP (single v1 (Fun f2 v2), inP (singleUnifiesVarAndFun v1 f2 v2 a, \lam q' u' => {?}))
+  | Fun f1 v1, Var v2, inP a => inP (single v2 (Fun f1 v1), inP (inv (singleUnifiesVarAndFun v2 f1 v1 (inP (a.1, inv a.2))), \lam q' u' => {?}))
+  | Fun f1 v1, Fun f2 v2, inP a => inP {?}
+  \where {
+    \func singleUnifiesVarAndFun {S : Signature}
+                                 {V : DecSet}
+                                 (v1 : V)
+                                 (f2 : S.symbol)
+                                 (v2 : Vector (arity f2) (Term S V))
+                                 (u : unifiable (Var v1) (Fun f2 v2))
+      : isUnifier (single {S} v1 (Fun f2 v2)) (Var v1) (Fun f2 v2) =>
+      \let
+        | A : substitute (single {S} v1 (Fun f2 v2)) (Var v1) = Fun f2 v2 => singleElimEq {S} v1 (Fun f2 v2)
+        -- Fun f2 v2 = substitute (single {S} v1 (Fun f2 v2)) (Fun f2 v2)
+      \in \case arity f2 \with {
+        | 0 => {?}
+        | suc n => {?}
+      }
+
+    \func singleUnifiesVar {S : Signature}
+                           {V : DecSet}
+                           (v1 v2 : V)
+      : isUnifier (single {S} v1 (Var v2)) (Var v1) (Var v2) =>
+      \case decideEq v1 v2 \with {
+        | yes e => pmap (substitute (single v1 (Var v2))) (pmap Var e)
+        | no n =>
+          \let
+            | A => singleElimNotEq {S} v1 (Var v2) v2 n
+            | B => singleElimEq {S} v1 (Var v2)
+          \in
+            transportInv (\lam x => x = single v1 (Var v2) v2) B (transportInv (\lam x => Var v2 = x) A (idp {_} {Var {S} v2}))
+      }
+
+    \func subst1 {S : Signature}
+                 {V : DecSet}
+                 (v1 v2 : V)
+                 (q : substitution {S} {V})
+      : substitution {S} {V} =>
+      \lam v =>
+          subst1Decider v1 v2 v q (decideEq v v1)
+
+    \func subst1Decider {S : Signature}
+                        {V : DecSet}
+                        (v1 v2 v : V)
+                        (q : substitution {S} {V})
+                        (d : Dec (v = v1))
+      : Term S V
+      | v1, v2, v, q, yes e => single v2 (q v) v
+      | v1, v2, v, q, no n => q v
+
+    \func subst1Lemma1 {S : Signature}
+                       {V : DecSet}
+                       (v1 v2 : V)
+                       (q : substitution {S} {V})
+                       (u : isUnifier q (Var v1) (Var v2))
+                       (n : Not (v1 = v2))
+      : q = composition (single v1 (Var v2)) (subst1 v1 v2 q) =>
+      funExt (\lam _ => _)
+             q
+             (composition (single v1 (Var v2)) (subst1 v1 v2 q))
+             (\lam v => subst1Lemma2 v1 v2 v q u n (decideEq v v1))
+
+    \func subst1Lemma2 {S : Signature}
+                       {V : DecSet}
+                       (v1 v2 v : V)
+                       (q : substitution {S} {V})
+                       (u : isUnifier q (Var v1) (Var v2))
+                       (t : Not (v1 = v2))
+                       (d : Dec (v = v1))
+      : q v = composition (single v1 (Var v2)) (subst1 v1 v2 q) v
+      | v1, v2, v, q, u, t, yes e =>
+        \let
+          | A => rewrite e u
+          | B => idp {_} {substitute (subst1 v1 v2 q) (single v1 (Var v2) v)}
+          | C => rewriteI {1} e B
+          | D => rewriteI (singleElimEq v1 (Var v2)) C
+          | E => propDeciderNo {_} {\lam x => x = v1} (\lam x => decideEq x v1) v2 (\lam r => t (inv r))
+          | F : subst1 v1 v2 q v2 = subst1Decider v1 v2 v2 q (decideEq v2 v1) => idp
+          | G => rewriteI F D
+          | H => rewriteI E G
+        \in A *> H
+      | v1, v2, v, q, u, t, no n =>
+        \let
+          | A => idp {_} {substitute (subst1 v1 v2 q) (single v1 (Var v2) v)}
+          | B => rewriteI {1} (singleSubsElimNotEq v1 (Var v2) v (\lam r => n (inv r))) A
+          | C : subst1 v1 v2 q v = subst1Decider v1 v2 v q (decideEq v v1) => idp
+          | D => rewriteI C B
+          | E => propDeciderNo {_} {\lam x => x = v1} (\lam x => decideEq x v1) v n
+          | F => rewriteI E D
+        \in F
+  }

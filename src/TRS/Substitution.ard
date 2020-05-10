@@ -33,9 +33,9 @@
              (x : V)
              (y : Term S V)
   : substitution {S} {V} =>
-  \lam a => signleDecide x y a (decideEq a x)
+  \lam a => singleDecide x y a (decideEq a x)
   \where
-    \func signleDecide {S : Signature}
+    \func singleDecide {S : Signature}
                        {V : DecSet}
                        (x : V)
                        (y : Term S V)
@@ -57,7 +57,7 @@
                  (x : V)
                  (y : Term S V)
                  (d : (Dec (x = x)))
-      : single.signleDecide x y x d = y => rewrite (_help2 x d) idp
+      : single.singleDecide x y x d = y => rewrite (_help2 x d) idp
 
     \func _help2 {V : DecSet}
                  (x : V)
@@ -83,7 +83,7 @@
                  (z : V)
                  (n : Not (x = z))
                  (d : (Dec (z = x)))
-      : single.signleDecide x y z d = Var z
+      : single.singleDecide x y z d = Var z
       | _, _, _, n, yes e => absurd (n (inv e))
       | _, _, _, _, no _ => idp
   }
@@ -152,6 +152,45 @@
                     (s : substitution {S} {V})
   : s = composition id s =>
   funExt (\lam _ => Term S V) s (composition id s) (\lam x => rewrite (substituteVar x s) idp)
+
+\func compositionId' {S : Signature}
+                     {V : \Set}
+                     (s : substitution {S} {V})
+  : s = composition s id =>
+  funExt (\lam _ => Term S V)
+         s
+         (composition s id)
+         (\lam x =>
+             \let
+               | A : substitute id (s x) = (composition s id) x => idp
+               | B => rewriteI {2} (inv (substituteId (s x))) A
+             \in rewrite A B)
+
+\func singleIdempotent {S : Signature}
+                       {V : DecSet}
+                       (v1 v2 : V)
+                       (n : Not (v1 = v2))
+  :
+  single {S} v1 (Var v2)
+    =
+  composition (single v1 (Var v2)) (single v1 (Var v2)) =>
+  funExt (\lam _ => _)
+         (single v1 (Var v2))
+         (composition (single v1 (Var v2)) (single v1 (Var v2)))
+         (\lam x => \case decideEq v1 x \with {
+           | yes e =>
+             \let
+               | A => rewriteI {3} e (singleElimEq {S} v1 (Var v2))
+               | B => rewriteI {1} A (idp {_} {substitute {S} (single v1 (Var v2)) (single v1 (Var v2) x)})
+               | C => singleElimNotEq {S} v1 (Var v2) v2 n
+               | D => A *> inv C *> B
+             \in D
+           | no n =>
+             \let
+               | A => singleElimNotEq {S} v1 (Var v2) x n
+               | B => rewriteI {1} A (idp {_} {substitute {S} (single v1 (Var v2)) (single v1 (Var v2) x)})
+             \in B
+         })
 
 \func substituteSubstitute {S : Signature}
                            {V : \Set}
