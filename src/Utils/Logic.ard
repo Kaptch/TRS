@@ -1,4 +1,7 @@
+\import Equiv
 \import Logic
+\import Order.Lattice
+\import Paths
 
 \func NotOrLeft {A B : \Type}
                 (n : Not (A || B))
@@ -9,3 +12,139 @@
                  (n : Not (A || B))
   : Not B =>
   \lam b => n (byRight b)
+
+\func PropOrEmpty {X : \Prop} : QEquiv \cowith
+  | A => X
+  | B => Empty || X
+  | f => fPropOrEmpty
+  | ret => retPropOrEmpty
+  | ret_f => \lam _ => idp
+  | f_sec => fPropSecOrEmpty
+  \where {
+    \func fPropOrEmpty {X : \Prop}
+                       (x : X)
+      : Empty || X =>
+      byRight x
+
+    \func retPropOrEmpty {X : \Prop}
+                         (x : Empty || X)
+      : X
+      | byLeft a => absurd a
+      | byRight b => b
+
+    \func fPropSecOrEmpty {X : \Prop}
+                          (y : Empty || X)
+      : fPropOrEmpty (retPropOrEmpty y) = y
+      | byLeft a => absurd a
+      | byRight b => idp
+  }
+
+\func PropOrComm {X Y : \Prop} : QEquiv \cowith
+  | A => X || Y
+  | B => Y || X
+  | f => fOrComm
+  | ret => retOrComm
+  | ret_f => fRetOrComm
+  | f_sec => fSecOrComm
+  \where {
+    \func fOrComm {X Y : \Prop}
+                  (a : X || Y)
+      : Y || X
+      | byLeft a => byRight a
+      | byRight b => byLeft b
+
+    \func retOrComm {X Y : \Prop}
+                    (a : Y || X)
+      : X || Y
+      | byLeft a => byRight a
+      | byRight b => byLeft b
+
+    \func fSecOrComm {X Y : \Prop}
+                     (a : Y || X)
+      : fOrComm (retOrComm a) = a
+      | byLeft a => idp
+      | byRight b => idp
+
+    \func fRetOrComm {X Y : \Prop}
+                     (a : X || Y)
+      : retOrComm (fOrComm a) = a
+      | byLeft a => idp
+      | byRight b => idp
+  }
+
+\func truncOrIdem {X : \Type} : QEquiv \cowith
+  | A => TruncP X
+  | B => TruncP X || TruncP X
+  | f => byLeft
+  | ret => retTruncOrIdem
+  | ret_f => \lam _ => idp
+  | f_sec => fSecTruncOrIdem
+  \where {
+    \func retTruncOrIdem {X : \Type}
+                         (x : TruncP X || TruncP X)
+      : TruncP X
+      | byLeft a => a
+      | byRight b => b
+
+    \func fSecTruncOrIdem {X : \Type}
+                          (x : TruncP X || TruncP X)
+      : byLeft (retTruncOrIdem x) = x =>
+      Path.inProp (byLeft (retTruncOrIdem x)) x
+  }
+
+\func PropOrAssoc {X Y Z : \Prop} : QEquiv \cowith
+  | A => X || Y || Z
+  | B => (X || Y) || Z
+  | f => f'
+  | ret => ret'
+  | ret_f => ret_f'
+  | f_sec => f_sec'
+  \where {
+    \func f' {X Y Z : \Prop}
+             (x : X || Y || Z)
+      : (X || Y) || Z
+      | byLeft a => byLeft (byLeft a)
+      | byRight b => fRight' b
+      \where
+        \func fRight' {X Y Z : \Prop}
+                      (x : Y || Z)
+          : (X || Y) || Z
+          | byLeft a => byLeft (byRight a)
+          | byRight b => byRight b
+
+    \func ret' {X Y Z : \Prop}
+               (x : (X || Y) || Z)
+      : X || Y || Z
+      | byLeft a => retLeft' a
+      | byRight b => byRight (byRight b)
+      \where
+        \func retLeft' {X Y Z : \Prop}
+                       (x : X || Y)
+          : X || Y || Z
+          | byLeft a => byLeft a
+          | byRight b => byRight (byLeft b)
+
+    \func ret_f' {X Y Z : \Prop}
+                 (x : X || Y || Z)
+      : ret' (f' x) = x
+      | byLeft a => idp
+      | byRight b => retFRight b
+      \where
+        \func retFRight {X Y Z : \Prop}
+                        (b : Y || Z)
+          : ret' (f'.fRight' {X} b) = byRight b
+          | byLeft a => idp
+          | byRight b => idp
+
+    \func f_sec' {X Y Z : \Prop}
+                 (x : (X || Y) || Z)
+      : f' (ret' x) = x
+      | byLeft a => fSecLeft a
+      | byRight b => idp
+      \where
+        \func fSecLeft {X Y Z : \Prop}
+                       (a : X || Y)
+          : f' (ret'.retLeft' {_} {_} {Z} a) = byLeft a
+          | byLeft a => idp
+          | byRight b => idp
+  }

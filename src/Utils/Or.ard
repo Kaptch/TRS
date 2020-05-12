@@ -1,0 +1,29 @@
+\import Data.Or
+\import Equiv
+\import Logic
+
+\func OrEmpty {X : \Type} : QEquiv \cowith
+  | A => X
+  | B => Empty `Or` X
+  | f => fOrEmpty
+  | ret => retOrEmpty
+  | ret_f => \lam _ => idp
+  | f_sec => fSecOrEmpty
+  \where {
+    \func fOrEmpty {X : \Type}
+                   (x : X)
+      : Empty `Or` X =>
+      inr x
+
+    \func retOrEmpty {X : \Type}
+                     (x : Empty `Or` X)
+      : X
+      | inl a => absurd a
+      | inr b => b
+
+    \func fSecOrEmpty {X : \Type}
+                      (y : Empty `Or` X)
+      : fOrEmpty (retOrEmpty y) = y
+      | inl a => absurd a
+      | inr b => idp
+  }

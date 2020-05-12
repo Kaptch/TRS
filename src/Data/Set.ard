@@ -1,0 +1,222 @@
+\import Data.And
+\import Equiv (Map, QEquiv, Section, transQEquiv)
+\import Equiv.Univalence
+\import HLevel
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Utils.Logic
+
+-- Kuratowski Finite Set
+-- https://cs.ru.nl/~nweide/FiniteSetsInHoTT.pdf
+
+\data FiniteSet (A : \Type)
+  | empty
+  | singleton (x : A)
+  | union (s1 : FiniteSet A) (s2 : FiniteSet A)
+  | nl (x : FiniteSet A) (i : I) \elim i {
+    | left => union empty x
+    | right => x
+  }
+  | nr (x : FiniteSet A) (i : I) \elim i {
+    | left => union x empty
+    | right => x
+  }
+  | idem (x : A) (i : I) \elim i {
+    | left => union (singleton x) (singleton x)
+    | right => singleton x
+  }
+  | assoc (x y z : FiniteSet A) (i : I) \elim i {
+    | left => union x (union y z)
+    | right => union (union x y) z
+  }
+  | comm (x y : FiniteSet A) (i : I) \elim i {
+    | left => union x y
+    | right => union y x
+  }
+  | trunc (a b : FiniteSet A) (p q : a = b) (i j : I) \elim i, j {
+    | i, left => p @ i
+    | i, right => q @ i
+    | left, _ => a
+    | right, _ => b
+  }
+  \where
+    \use \level levelSet {A : \Type}
+                         {a b : FiniteSet A}
+                         (p q : a = b)
+      : p = q =>
+      path (\lam i => (path (\lam j => trunc a b p q j i)))
+
+\func FiniteSetInduction {A : \Type}
+                         (P : FiniteSet A -> \Set)
+                         (P_empty : P empty)
+                         (P_singleton : \Pi (x : A) -> P (singleton x))
+                         (P_union : \Pi (x y : FiniteSet A) -> P x -> P y -> P (union x y))
+                         (P_nl : \Pi (x : FiniteSet A) (p : P x) -> Path (\lam i => P (nl x i)) (P_union empty x P_empty p) p)
+                         (P_nr : \Pi (x : FiniteSet A) (p : P x) -> Path (\lam i => P (nr x i)) (P_union x empty p P_empty) p)
+                         (P_idem : \Pi (x : A) -> Path (\lam i => P (idem x i)) (P_union (singleton x) (singleton x) (P_singleton x) (P_singleton x)) (P_singleton x))
+                         (P_assoc : \Pi (x y z : FiniteSet A) (p : P x) (q : P y) (r : P z) -> Path (\lam i => P (assoc x y z i)) (P_union x (union y z) p (P_union y z q r)) (P_union (union x y) z (P_union x y p q) r))
+                         (P_comm : \Pi (x y : FiniteSet A) (p : P x) (q : P y) -> Path (\lam i => P (comm x y i)) (P_union x y p q) (P_union y x q p))
+                         (x : FiniteSet A)
+  : P x
+  | P, P_empty, P_singleton, P_union, P_nl, P_nr, P_idem, P_assoc, P_comm, empty =>
+    P_empty
+  | P, P_empty, P_singleton, P_union, P_nl, P_nr, P_idem, P_assoc, P_comm, singleton x =>
+    P_singleton x
+  | P, P_empty, P_singleton, P_union, P_nl, P_nr, P_idem, P_assoc, P_comm, union s1 s2 =>
+    P_union s1 s2
+            (FiniteSetInduction P P_empty P_singleton P_union P_nl P_nr P_idem P_assoc P_comm s1)
+            (FiniteSetInduction P P_empty P_singleton P_union P_nl P_nr P_idem P_assoc P_comm s2)
+  | P, P_empty, P_singleton, P_union, P_nl, P_nr, P_idem, P_assoc, P_comm, nl x i =>
+    (P_nl x (FiniteSetInduction P P_empty P_singleton P_union P_nl P_nr P_idem P_assoc P_comm x)) @ i
+  | P, P_empty, P_singleton, P_union, P_nl, P_nr, P_idem, P_assoc, P_comm, nr x i =>
+    (P_nr x (FiniteSetInduction P P_empty P_singleton P_union P_nl P_nr P_idem P_assoc P_comm x)) @ i
+  | P, P_empty, P_singleton, P_union, P_nl, P_nr, P_idem, P_assoc, P_comm, idem x i =>
+    (P_idem x) @ i
+  | P, P_empty, P_singleton, P_union, P_nl, P_nr, P_idem, P_assoc, P_comm, assoc x y z i =>
+    (P_assoc x y z (FiniteSetInduction P P_empty P_singleton P_union P_nl P_nr P_idem P_assoc P_comm x)
+             (FiniteSetInduction P P_empty P_singleton P_union P_nl P_nr P_idem P_assoc P_comm y)
+             (FiniteSetInduction P P_empty P_singleton P_union P_nl P_nr P_idem P_assoc P_comm z)) @ i
+  | P, P_empty, P_singleton, P_union, P_nl, P_nr, P_idem, P_assoc, P_comm, comm x y i =>
+    (P_comm x y (FiniteSetInduction P P_empty P_singleton P_union P_nl P_nr P_idem P_assoc P_comm x)
+            (FiniteSetInduction P P_empty P_singleton P_union P_nl P_nr P_idem P_assoc P_comm y)) @ i
+
+\func unionIdem {A : \Type}
+                (x : FiniteSet A)
+  : union x x = x
+  | {A}, x => FiniteSetInduction (\lam y => union y y = y)
+                                 (path (nl {A} empty))
+                                 (\lam y => (path (idem {A} y)))
+                                 (\lam y z u1 u2 =>
+                                     \let
+                                       | A => idp {_} {union (union y z) (union y z)}
+                                       | B => rewriteI {2} (path (assoc (union y z) y z)) A
+                                       | C => rewriteI {3} (path (comm y z)) B
+                                       | D => rewrite (path (assoc z y y)) C
+                                       | E => rewriteI u1 D
+                                       | F => rewriteI (path (comm z y)) E
+                                       | G => rewrite (path (assoc y z z)) F
+                                       | H => rewriteI u2 G
+                                     \in H)
+                                 (\lam y u => pathOver (Path.inProp _ _))
+                                 (\lam y u => pathOver (Path.inProp _ _))
+                                 (\lam y => pathOver (Path.inProp _ _))
+                                 (\lam a b c p q r => pathOver (Path.inProp _ _))
+                                 (\lam y z p q => pathOver (Path.inProp _ _))
+                                 x
+
+\func member {A : \Type}
+             (a : A)
+             (f : FiniteSet A)
+  : \Prop
+  | a, empty => Empty
+  | a, singleton x => TruncP (a = x)
+  | a, union s1 s2 => (member a s1) || (member a s2)
+  | a, nl x i => inv (QEquiv-to-= (PropOrEmpty {member a x})) @ i
+  | a, nr x i =>
+    \let
+      | A => QEquiv-to-= (PropOrComm {Empty} {member a x})
+      | B => QEquiv-to-= (PropOrEmpty {member a x})
+      | C => rewriteI A B
+    \in inv C @ i
+  | a, idem x i =>
+    \let
+      | A => QEquiv-to-= (truncOrIdem {a = x})
+    \in inv A @ i
+  | a, assoc x y z i =>
+    \let
+      | A => QEquiv-to-= (PropOrAssoc {member a x} {member a y} {member a z})
+    \in A @ i
+  | a, comm x y i =>
+    \let
+      | A => QEquiv-to-= (PropOrComm {member a x} {member a y})
+    \in A @ i
+
+\func extensionality {A : \Type}
+                     (x y : FiniteSet A) : QEquiv => (qequiv1 x y) `transQEquiv` (qequiv2 x y)
+  \where {
+    \func qequiv1 {A : \Type}
+                  (x y : FiniteSet A) : QEquiv \cowith
+      | A => x = y
+      | B => (union y x = x) && (union x y = y)
+      | f => \lam p => Prod (rewriteI p (unionIdem x)) (rewriteI p (unionIdem x))
+      | ret => \lam pr => \case pr \with {
+        | Prod a b =>
+          \let
+            | A => inv a
+            | B => rewriteI (path (comm x y)) b
+          \in A *> B
+      }
+      | ret_f => {?}
+      | f_sec => {?}
+
+    \func qequiv2 {A : \Type}
+                  (x y : FiniteSet A) : QEquiv \cowith
+      | A => (union y x = x) && (union x y = y)
+      | B => \Pi (a : A) -> (member a x) = (member a y)
+      | f => \lam pr => \case pr \with {
+        | Prod a b =>
+          \let
+            | A => inv a
+            | B => rewriteI (path (comm x y)) b
+            | C => A *> B
+          \in \lam a => pmap (member a) C
+      }
+      | ret => \lam p => Prod (lemma1 x y (\lam a => Section.ret {=-to-Equiv (p a)})) (lemma1 y x (\lam a => Map.f {=-to-Equiv (p a)}))
+      | ret_f => {?}
+      | f_sec => {?}
+
+    \func lemma1 {A : \Type}
+                 (x y : FiniteSet A)
+      : (\Pi (a : A) -> member a y -> member a x) -> union y x = x =>
+      FiniteSetInduction (\lam y => (\Pi (a : A) -> member a y -> member a x) -> union y x = x)
+                         (\lam _ => path (nl x))
+                         (\lam el p =>
+                             FiniteSetInduction (\lam x => member el x -> union (singleton el) x = x)
+                                                (\lam n => absurd n)
+                                                (\lam el' pr => TruncP.rec {el = el'}
+                                                                           (\lam k1 k2 =>
+                                                                               path (\lam i =>
+                                                                                   (path (\lam j =>
+                                                                                       trunc (union (singleton el) (singleton el')) (singleton el') k1 k2 j i))))
+                                                                           pr
+                                                                           (\lam q => rewrite {1} q (path (idem el'))))
+                                                (\lam s1 s2 f f' u => \case u \with {
+                                                  | byLeft a =>
+                                                    \let
+                                                      | A => f a
+                                                      | B => idp {_} {union s1 s2}
+                                                      | C => rewrite {1} A B
+                                                      | D => rewrite (path (assoc (singleton el) s1 s2)) C
+                                                    \in D
+                                                  | byRight b =>
+                                                    \let
+                                                      | A => f' b
+                                                      | B => idp {_} {union s1 s2}
+                                                      | C => rewrite {1} A B
+                                                      | D => rewriteI (path (assoc s1 (singleton el) s2)) C
+                                                      | E => rewriteI (path (comm s1 (singleton el))) D
+                                                      | F => rewrite (path (assoc (singleton el) s1 s2)) E
+                                                    \in F
+                                                })
+                                                (\lam y u => pathOver (Path.inProp _ _))
+                                                (\lam y u => pathOver (Path.inProp _ _))
+                                                (\lam y => pathOver (Path.inProp _ _))
+                                                (\lam a b c p q r => pathOver (Path.inProp _ _))
+                                                (\lam y z p q => pathOver (Path.inProp _ _))
+                                                x
+                                                (p el (inP idp)))
+                         (\lam s1 s2 f1 f2 f3 =>
+                             \let
+                               | A => f1 (\lam p q => f3 p (byLeft q))
+                               | B => f2 (\lam p q => f3 p (byRight q))
+                               | C => rewrite {1} B A
+                               | D => rewriteI (path (assoc s1 s2 x)) C
+                             \in D)
+                         (\lam y u => pathOver (Path.inProp _ _))
+                         (\lam y u => pathOver (Path.inProp _ _))
+                         (\lam y => pathOver (Path.inProp _ _))
+                         (\lam a b c p q r => pathOver (Path.inProp _ _))
+                         (\lam y z p q => pathOver (Path.inProp _ _))
+                         y
+  }
