@@ -1,0 +1,116 @@
+\import Data.Unit
+\import Data.Vector (Cons, Nil, Vector, zero_len=Nil)
+\import Equiv (Map, QEquiv)
+\import Equiv.Univalence
+\import Logic
+\import Paths
+\import Paths.Meta
+\import Set
+\import TRS.Reduction
+\import TRS.Signature
+\import TRS.Term
+
+\data symbols
+  | inv
+  | e
+
+\func symbolsDec : DecSet.Impl symbols \cowith
+  | decideEq => decideEq'
+  \where {
+    \func absurdMap (s : symbols) : \Prop
+      | inv => Empty
+      | e => Unit
+
+    \func decideEq' (x y : symbols) : Dec (x = y)
+      | inv, inv => yes idp
+      | inv, e => no (\lam n => Map.f {=-to-Equiv (pmap absurdMap (Paths.inv n))} T)
+      | e, inv => no (\lam n => Map.f {=-to-Equiv (pmap absurdMap n)} T)
+      | e, e => yes idp
+  }
+
+\func aritySymbols (x : symbolsDec) : Nat
+  | inv => 1
+  | e => 0
+
+\func variables => Nat
+
+\func signature : Signature => \new Signature {
+  | symbol => symbolsDec
+  | arity => aritySymbols
+}
+
+\func MonoidTerm => Term signature variables
+
+\data MonoidTerm'
+  | E
+  | INV (x : MonoidTerm')
+  | VAR (x : variables)
+
+\func MonoidInterpr : QEquiv \cowith
+  | A => MonoidTerm
+  | B => MonoidTerm'
+  | f => f'
+  | ret => ret'
+  | ret_f => ret_f'
+  | f_sec => f_sec'
+  \where {
+    \func f' (x : MonoidTerm) : MonoidTerm'
+      | Var v => VAR v
+      | Fun f v => f'_help f v
+
+    \func f'_help (f : symbolsDec) (v : Vector (aritySymbols f) MonoidTerm)
+      : MonoidTerm'
+      | inv, Cons a v => INV (f' a)
+      | e, Nil => E
+
+    \func ret' (x : MonoidTerm') : MonoidTerm
+      | E => Fun e Nil
+      | INV x => Fun inv (Cons (ret' x) Nil)
+      | VAR x => Var x
+
+    \func ret_f' (x : MonoidTerm) : ret' (f' x) = x
+      | Var v => idp
+      | Fun f v => ret_f'_help f v
+
+    \func ret_f'_help (f : symbolsDec) (v : Vector (aritySymbols f) MonoidTerm) : ret' (f'_help f v) = Fun f v
+      | inv, Cons a v => pmap (Fun inv) (pmap2 Cons (ret_f' a) (Paths.inv (zero_len=Nil v)))
+      | e, Nil => idp
+
+    \func f_sec' (x : MonoidTerm') : f' (ret' x) = x
+      | E => idp
+      | INV x => pmap INV (f_sec' x)
+      | VAR x => idp
+  }
+
+\func MonoidTermRules' (x y : MonoidTerm') : \Prop
+  | E, _ => Empty
+  | VAR x, _ => Empty
+  | INV x, E => E_INV x
+  | INV x, VAR y => X_INV x y
+  | INV x, _ => Empty
+  \where {
+    -- INV E -> E
+
+    \func E_INV (x : MonoidTerm') : \Prop
+      | E => Unit
+      | INV x => Empty
+      | VAR x => Empty
+
+    -- INV (INV (VAR x)) -> VAR x
+
+    \func X_INV (x : MonoidTerm') (y : variables) : \Prop
+      | E, y => Empty
+      | VAR x, y => Empty
+      | INV x, y => X_INV_INV x y
+
+    \func X_INV_INV (x : MonoidTerm') (y : variables) : \Prop
+      | E, y => Empty
+      | INV x, y => Empty
+      | VAR x, y => x = y
+  }
+
+\func MonoidTermRules (x y : MonoidTerm) : \Prop =>
+  MonoidTermRules' (rewriteI (QEquiv-to-= MonoidInterpr) x) (rewriteI (QEquiv-to-= MonoidInterpr) y)
+
+\func MonoidTermReductionRules (x y : MonoidTerm) : \Prop =>
+  ReductionRule MonoidTermRules x y

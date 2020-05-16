@@ -219,4 +219,12 @@
                          (\lam a b c p q r => pathOver (Path.inProp _ _))
                          (\lam y z p q => pathOver (Path.inProp _ _))
                          y
+
+    \func lemma2 {A : \Type}
+                 (x y : FiniteSet A)
+                 (h : union y x = x)
+                 (a : A)
+                 (m : member a y)
+      : member a x =>
+      transport (\lam z => member a z) h (byLeft m)
   }

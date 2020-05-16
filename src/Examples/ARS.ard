@@ -1,0 +1,132 @@
+\import ARS.Core
+\import Data.Unit
+\import Logic
+\import Paths
+\import Relation.Closure.ReflexiveTransitive
+\import Relation.Core
+\import Relation.Wellfounded
+
+\data EX1
+  | a
+  | b
+  | c
+  | d
+
+\func EX1Rules (x y : EX1) : \Prop
+  | a, b => Unit
+  | b, c => Unit
+  | _, _ => Empty
+
+\func EX1SN : stronglyNormalizing EX1Rules =>
+  help'
+  \where {
+    \func help' (x : EX1) : acc (co-relation EX1Rules) x =>
+      accREL (\lam (y : EX1) => \lam (t : co-relation EX1Rules y x) => \case t \with {
+        | op r => help'' x y r
+      })
+
+    \func help'' (x y : EX1) (r : EX1Rules x y) : acc (co-relation EX1Rules) y
+      | a, b, T => accREL (\lam (z : EX1) => \lam (t : co-relation EX1Rules z b) => \case t \with {
+        | op r => help''' z r
+      })
+      | b, c, T => accREL (\lam (z : EX1) => \lam (t : co-relation EX1Rules z c) => \case t \with {
+        | op r => absurd r
+      })
+      | c, a, ()
+      | d, a, ()
+
+    \func help''' (x : EX1) (r : EX1Rules b x) : acc (co-relation EX1Rules) x
+      | c, T => help''''
+
+    \func help'''' : acc (co-relation EX1Rules) c =>
+      accREL (\lam (x : EX1) => \lam (t : co-relation EX1Rules x c) => \case t \with {
+        | op r => absurd r
+      })
+  }
+
+\func EX1WCF : weaklyConfluent EX1Rules =>
+  \lam (x y z : EX1) => \lam (s : \Sigma (EX1Rules x y) (EX1Rules x z)) => help' x y z s.1 s.2
+  \where {
+    \func help' (x y z : EX1) (s1 : EX1Rules x y) (s2 : EX1Rules x z) : TruncP (\Sigma (t : EX1) (rule* EX1Rules y t) (rule* EX1Rules z t))
+      | a, b, b, T, T => inP (c, cons c T (base idp), cons c T (base idp))
+      | b, c, c, T, T => inP (c, base idp, base idp)
+      | a, _, a, _, ()
+      | a, _, c, _, ()
+      | a, _, d, _, ()
+      | b, _, a, _, ()
+  }
+
+\func EX1CF : confluent EX1Rules =>
+  stronglyNormalizing&&weaklyConfluent->confluent EX1Rules EX1SN EX1WCF
+
+\func EX1UNF : uniqueNormalForm EX1Rules =>
+  confluent->uniqueNormalForm EX1Rules EX1CF
+
+\func EX1CF' : confluent EX1Rules => \lam (x y z : EX1) =>
+    \lam (s : \Sigma (rule* EX1Rules x y) (rule* EX1Rules x z)) => help' x y z s.1 s.2
+  \where {
+    \func help' (x y z : EX1) (s1 : rule* EX1Rules x y) (s2 : rule* EX1Rules x z) : TruncP (\Sigma (t : EX1) (rule* EX1Rules y t) (rule* EX1Rules z t))
+      | _, a, a, _, _ => inP (a, base idp, base idp)
+      | a, a, _, _, base r => inP (a, base idp, base (inv r))
+      | a, a, b, _, t => inP (b, t, base idp)
+      | a, a, c, _, t => inP (c, t, base idp)
+      | a, b, a, s1, s2 => {?}
+      | a, c, a, s1, s2 => {?}
+      | a, d, a, s1, s2 => {?}
+      | a, a, d, s1, s2 => {?}
+      | b, b, a, s1, s2 => {?}
+      | b, c, a, s1, s2 => {?}
+      | b, d, a, s1, s2 => {?}
+      | b, a, b, s1, s2 => {?}
+      | b, a, c, s1, s2 => {?}
+      | b, a, d, s1, s2 => {?}
+      | c, b, a, s1, s2 => {?}
+      | c, c, a, s1, s2 => {?}
+      | c, d, a, s1, s2 => {?}
+      | c, a, b, s1, s2 => {?}
+      | c, a, c, s1, s2 => {?}
+      | c, a, d, s1, s2 => {?}
+      | d, b, a, s1, s2 => {?}
+      | d, c, a, s1, s2 => {?}
+      | d, d, a, s1, s2 => {?}
+      | d, a, b, s1, s2 => {?}
+      | d, a, c, s1, s2 => {?}
+      | d, a, d, s1, s2 => {?}
+      | a, b, b, s1, s2 => {?}
+      | a, b, c, s1, s2 => {?}
+      | a, b, d, s1, s2 => {?}
+      | a, c, b, s1, s2 => {?}
+      | a, c, c, s1, s2 => {?}
+      | a, c, d, s1, s2 => {?}
+      | a, d, b, s1, s2 => {?}
+      | a, d, c, s1, s2 => {?}
+      | a, d, d, s1, s2 => {?}
+      | b, b, b, s1, s2 => {?}
+      | b, b, c, s1, s2 => {?}
+      | b, b, d, s1, s2 => {?}
+      | b, c, b, s1, s2 => {?}
+      | b, c, c, s1, s2 => {?}
+      | b, c, d, s1, s2 => {?}
+      | b, d, b, s1, s2 => {?}
+      | b, d, c, s1, s2 => {?}
+      | b, d, d, s1, s2 => {?}
+      | c, b, b, s1, s2 => {?}
+      | c, b, c, s1, s2 => {?}
+      | c, b, d, s1, s2 => {?}
+      | c, c, b, s1, s2 => {?}
+      | c, c, c, s1, s2 => {?}
+      | c, c, d, s1, s2 => {?}
+      | c, d, b, s1, s2 => {?}
+      | c, d, c, s1, s2 => {?}
+      | c, d, d, s1, s2 => {?}
+      | d, b, b, s1, s2 => {?}
+      | d, b, c, s1, s2 => {?}
+      | d, b, d, s1, s2 => {?}
+      | d, c, b, s1, s2 => {?}
+      | d, c, c, s1, s2 => {?}
+      | d, c, d, s1, s2 => {?}
+      | d, d, b, s1, s2 => {?}
+      | d, d, c, s1, s2 => {?}
+      | d, d, d, s1, s2 => {?}
+  }
+

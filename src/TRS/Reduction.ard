@@ -24,13 +24,13 @@
   \Pi (r : rel a b) ->
       incl (vars b).2 (vars a).2
 
-\record RewritingRule {S : Signature}
-                      {V : \Set}
-{
-  | rule : relation (Term S V)
-  | lSideIsNotVarProp : \Pi (x y : Term S V) -> lSideIsNotVar rule x y
-  | preserveVarsProp :  \Pi (x y : Term S V) -> preserveVars rule x y
-}
+--\record RewritingRule {S : Signature}
+--                      {V : \Set}
+--{
+--  | rule : relation (Term S V)
+--  | lSideIsNotVarProp : \Pi (x y : Term S V) -> lSideIsNotVar rule x y
+--  | preserveVarsProp :  \Pi (x y : Term S V) -> preserveVars rule x y
+--}
 
 \func monotonic {S : Signature}
                 {V : \Set}
@@ -52,11 +52,11 @@
 
 \func ReductionRule {S : Signature}
                     {V : \Set}
-                    (r : RewritingRule {S} {V})
+                    (r : relation (Term S V))
                     (x y : Term S V)
   : \Prop =>
   TruncP (\Sigma (x' y' : Term S V)
-                 (rel : r.rule x' y')
+                 (rel : r x' y')
                  (c : Context S V)
                  (delta : substitution {S} {V})
                  (x = fill c (substitute delta x'))
@@ -64,17 +64,17 @@
 
 \func reductionStepIsRule {S : Signature}
                           {V : \Set}
-                          (r : RewritingRule {S} {V})
+                          (r : relation (Term S V))
                           (c : Context S V)
                           (s : substitution {S} {V})
                           {x y : Term S V}
-                          (rel : r.rule x y)
+                          (rel : r x y)
   : ReductionRule r (fill c (substitute s x)) (fill c (substitute s y)) =>
   inP (x, y, rel, c, s, idp, idp)
 
 \func reductionStepMonotonic {S : Signature}
                              {V : \Set}
-                             (r : RewritingRule {S} {V})
+                             (r : relation (Term S V))
   : monotonic (ReductionRule r) =>
   \lam (x y : Term S V) =>
       \lam (c : Context S V) =>
@@ -92,7 +92,7 @@
 
 \func reductionStepStable {S : Signature}
                           {V : \Set}
-                          (r : RewritingRule {S} {V})
+                          (r : relation (Term S V))
   : stable (ReductionRule r) =>
   \lam (x y : Term S V) =>
       \lam (delta : substitution {S} {V}) =>

@@ -168,3 +168,8 @@
                            (transportMap f (inv (concat.suc_linear n j)) (Cons a (concat v v2))))
              i
              v1
+
+\func zero_len=Nil {A : \Type}
+                   (v : Vector 0 A)
+  : v = Nil
+  | Nil => idp
