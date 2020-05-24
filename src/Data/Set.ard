@@ -114,57 +114,82 @@
   | a, union s1 s2 => (member a s1) || (member a s2)
   | a, nl x i => inv (QEquiv-to-= (PropOrEmpty {member a x})) @ i
   | a, nr x i =>
-    \let
-      | A => QEquiv-to-= (PropOrComm {Empty} {member a x})
-      | B => QEquiv-to-= (PropOrEmpty {member a x})
-      | C => rewriteI A B
-    \in inv C @ i
+    inv ((QEquiv-to-= (PropOrEmpty {member a x})) *> (QEquiv-to-= (PropOrComm {Empty} {member a x}))) @ i
   | a, idem x i =>
-    \let
-      | A => QEquiv-to-= (truncOrIdem {a = x})
-    \in inv A @ i
+    inv (QEquiv-to-= (truncOrIdem {a = x})) @ i
   | a, assoc x y z i =>
-    \let
-      | A => QEquiv-to-= (PropOrAssoc {member a x} {member a y} {member a z})
-    \in A @ i
+    (QEquiv-to-= (PropOrAssoc {member a x} {member a y} {member a z})) @ i
   | a, comm x y i =>
-    \let
-      | A => QEquiv-to-= (PropOrComm {member a x} {member a y})
-    \in A @ i
+    (QEquiv-to-= (PropOrComm {member a x} {member a y})) @ i
 
 \func extensionality {A : \Type}
-                     (x y : FiniteSet A) : QEquiv => (qequiv1 x y) `transQEquiv` (qequiv2 x y)
+                     (x y : FiniteSet A)
+  : QEquiv {x = y} {\Pi (a : A) -> (member a x) = (member a y)} =>
+  (qequiv1 x y) `transQEquiv` (qequiv2 x y)
   \where {
     \func qequiv1 {A : \Type}
                   (x y : FiniteSet A) : QEquiv \cowith
       | A => x = y
       | B => (union y x = x) && (union x y = y)
-      | f => \lam p => Prod (rewriteI p (unionIdem x)) (rewriteI p (unionIdem x))
-      | ret => \lam pr => \case pr \with {
-        | Prod a b =>
-          \let
-            | A => inv a
-            | B => rewriteI (path (comm x y)) b
-          \in A *> B
+      | f => f'
+      | ret => ret'
+      | ret_f => ret_f'
+      | f_sec => f_sec'
+      \where {
+        \func f' {A : \Type}
+                 {x y : FiniteSet A}
+                 (p : x = y)
+          : (union y x = x) && (union x y = y)
+          | {A}, {x}, {y}, p => Prod (rewriteI {1} p (unionIdem x)) (rewrite {1} p (unionIdem y))
+
+        \func ret' {A : \Type}
+                   {x y : FiniteSet A}
+                   (p : (union y x = x) && (union x y = y))
+          : x = y
+          | {A}, {x}, {y}, Prod a b => (inv a) *> (path (comm y x)) *> b
+
+        \func f_sec' {A : \Type}
+                     {x y : FiniteSet A}
+                     (p : (union y x = x) && (union x y = y))
+          : f' (ret' p) = p
+          | {A}, {x}, {y}, Prod a b => pmap2 Prod (Path.inProp _ _) (Path.inProp _ _)
+
+        \func ret_f' {A : \Type}
+                     {x y : FiniteSet A}
+                     (p : x = y)
+          : ret' (f' p) = p
+          | {A}, {x}, {y}, p => Path.inProp _ _
       }
-      | ret_f => {?}
-      | f_sec => {?}
 
     \func qequiv2 {A : \Type}
                   (x y : FiniteSet A) : QEquiv \cowith
       | A => (union y x = x) && (union x y = y)
       | B => \Pi (a : A) -> (member a x) = (member a y)
-      | f => \lam pr => \case pr \with {
-        | Prod a b =>
-          \let
-            | A => inv a
-            | B => rewriteI (path (comm x y)) b
-            | C => A *> B
-          \in \lam a => pmap (member a) C
+      | f => f'
+      | ret => ret'
+      | ret_f => \lam _ => Path.inProp _ _
+      | f_sec => f_sec'
+      \where {
+        \func f' {A : \Type}
+                 {x y : FiniteSet A}
+                 (p : (union y x = x) && (union x y = y))
+          : \Pi (a : A) -> member a x = member a y
+          | {A}, {x}, {y}, Prod a b =>
+            \lam t => pmap (member t) ((inv a) *> (path (comm y x)) *> b)
+
+        \func ret' {A : \Type}
+                   {x y : FiniteSet A}
+                   (p : \Pi (a : A) -> member a x = member a y)
+          : (union y x = x) && (union x y = y)
+          | {A}, {x}, {y}, p =>
+            Prod (lemma1 x y (\lam a => Section.ret {=-to-Equiv (p a)})) (lemma1 y x (\lam a => Map.f {=-to-Equiv (p a)}))
+
+        \func f_sec' {A : \Type}
+                     {x y : FiniteSet A}
+                     (h : \Pi (a : A) -> member a x = member a y)
+          : f' (ret' h) = h
+          | {A}, {x}, {y}, g => funExt (\lam t => member t x = member t y) (f' (ret' g)) g (\lam _ => Path.inProp _ _)
       }
-      | ret => \lam p => Prod (lemma1 x y (\lam a => Section.ret {=-to-Equiv (p a)})) (lemma1 y x (\lam a => Map.f {=-to-Equiv (p a)}))
-      | ret_f => {?}
-      | f_sec => {?}
 
     \func lemma1 {A : \Type}
                  (x y : FiniteSet A)
@@ -219,12 +244,116 @@
                          (\lam a b c p q r => pathOver (Path.inProp _ _))
                          (\lam y z p q => pathOver (Path.inProp _ _))
                          y
+  }
 
-    \func lemma2 {A : \Type}
-                 (x y : FiniteSet A)
-                 (h : union y x = x)
-                 (a : A)
-                 (m : member a y)
-      : member a x =>
-      transport (\lam z => member a z) h (byLeft m)
+\data ListedFiniteSet (A : \Type)
+  | nil
+  | cons (x : A) (l : ListedFiniteSet A)
+  | dupl (a : A) (l : ListedFiniteSet A) (i : I) \elim i {
+    | left => cons a (cons a l)
+    | right => cons a l
+  }
+  | coml (a b : A) (l : ListedFiniteSet A) (i : I) \elim i {
+    | left => cons a (cons b l)
+    | right => cons b (cons a l)
+  }
+  | trunl (a b : ListedFiniteSet A) (p q : a = b) (i j : I) \elim i, j {
+    | i, left => p @ i
+    | i, right => q @ i
+    | left, _ => a
+    | right, _ => b
+  }
+  \where
+    \use \level levelSet {A : \Type}
+                         {a b : ListedFiniteSet A}
+                         (p q : a = b)
+      : p = q =>
+      path (\lam i => (path (\lam j => trunl a b p q j i)))
+
+\func concat {A : \Type}
+             (x y : ListedFiniteSet A)
+  : ListedFiniteSet A
+  | nil, l => l
+  | cons x l, l' => cons x (concat l l')
+  | dupl a l i, l' => dupl a (concat l l') i
+  | coml a b l i, l' => coml a b (concat l l') i
+  \where {
+    \func concatNilL {A : \Type}
+                     (x : ListedFiniteSet A)
+      : concat x nil = x
+      | nil => idp
+      | cons x l => pmap (cons x) (concatNilL l)
+
+    \func concatNilR {A : \Type}
+                     (x : ListedFiniteSet A)
+      : x = concat x nil
+      | nil => idp
+      | cons x l => pmap (cons x) (concatNilR l)
+
+    \func concatCons {A : \Type}
+                     (x : A)
+                     (l : ListedFiniteSet A)
+      : cons x l = concat l (cons x nil)
+      | x, nil => idp
+      | x, cons x' l' =>
+        \let
+          | A => idp {_} {cons x' (concat l' (cons x nil))}
+          | B => rewrite {2} (concatCons x l') A
+          | C => path (coml x x' l')
+        \in C *> B
+
+    \func concatComm {A : \Type}
+                     (x y : ListedFiniteSet A)
+      : concat x y = concat y x
+      | nil, nil => idp
+      | nil, cons x l => pmap (cons x) (concatNilR l)
+      | cons x l, nil => pmap (cons x) (concatNilL l)
+      | cons x l, cons x' l' =>
+        \let
+          | A => idp {_} {cons x (concat l (cons x' l'))}
+          | B => rewriteI {3} (concatComm l (cons x' l')) A
+          | C => B *> (path (coml x x' (concat l' l)))
+          | D => rewrite {2} (concatComm l l') C
+          | E => rewrite (concatComm l (cons x l')) C
+        \in {?}
+      \where {
+        \func help {A : \Type}
+                   (x : A)
+                   (l l' : ListedFiniteSet A)
+          : concat l (cons x l') = concat l' (cons x l)
+          | x, nil, nil => idp
+          | x, nil, cons a l => {?}
+          | x, cons a l, nil => {?}
+          | x, cons a l, cons a' l' => {?}
+      }
+  }
+
+\func FiniteSet~ListedFiniteSet {X : \Type}
+  : QEquiv \cowith
+  | A => FiniteSet X
+  | B => ListedFiniteSet X
+  | f => f'
+  | ret => ret'
+  | ret_f => {?}
+  | f_sec => {?}
+  \where {
+    \func f' {X : \Type}
+             (s : FiniteSet X)
+      : ListedFiniteSet X
+      | empty => nil
+      | singleton x => cons x nil
+      | union s1 s2 => concat (f' s1) (f' s2)
+      | nl x i => idp {_} {f' x} @ i
+      | nr x i => concat.concatNilL (f' x) @ i
+      | idem x i => dupl x nil i
+      | assoc x y z i => {?}
+      | comm x y i => concat.concatComm (f' x) (f' y) @ i
+
+    \func ret' {X : \Type}
+               (s : ListedFiniteSet X)
+      : FiniteSet X
+      | nil => empty
+      | cons x l => union (singleton x) (ret' l)
+      | dupl a l i => {?}
+      | coml a b l i => {?}
   }
