@@ -1,10 +1,12 @@
 \import Data.And
+\import Data.Bool
 \import Equiv (Map, QEquiv, Section, transQEquiv)
 \import Equiv.Univalence
 \import HLevel
 \import Logic
 \import Paths
 \import Paths.Meta
+\import Set
 \import Utils.Logic
 
 -- Kuratowski Finite Set
@@ -270,6 +272,22 @@
       : p = q =>
       path (\lam i => (path (\lam j => trunl a b p q j i)))
 
+\func ListedFiniteSetInduction {A : \Type}
+                               (P : ListedFiniteSet A -> \Set)
+                               (P_nil : P nil)
+                               (P_cons : \Pi (a : A) (x : ListedFiniteSet A) -> P x -> P (cons a x))
+                               (P_dupl : \Pi (a : A) (x : ListedFiniteSet A) (p : P x) -> Path (\lam i => P (dupl a x i)) (P_cons a (cons a x) (P_cons a x p)) (P_cons a x p))
+                               (P_coml : \Pi (a b : A) (x : ListedFiniteSet A) (p : P x) -> Path (\lam i => P (coml a b x i)) (P_cons a (cons b x) (P_cons b x p)) (P_cons b (cons a x) (P_cons a x p)))
+                               (x : ListedFiniteSet A)
+  : P x
+  | P, P_nil, P_cons, P_dupl, P_coml, nil => P_nil
+  | P, P_nil, P_cons, P_dupl, P_coml, cons x l =>
+    P_cons x l (ListedFiniteSetInduction P P_nil P_cons P_dupl P_coml l)
+  | P, P_nil, P_cons, P_dupl, P_coml, dupl a l i =>
+    P_dupl a l (ListedFiniteSetInduction P P_nil P_cons P_dupl P_coml l) @ i
+  | P, P_nil, P_cons, P_dupl, P_coml, coml a b l i =>
+    P_coml a b l (ListedFiniteSetInduction P P_nil P_cons P_dupl P_coml l) @ i
+
 \func concat {A : \Type}
              (x y : ListedFiniteSet A)
   : ListedFiniteSet A
@@ -302,30 +320,44 @@
           | C => path (coml x x' l')
         \in C *> B
 
+    \func concatAssoc {A : \Type}
+                      (x y z : ListedFiniteSet A)
+      : concat x (concat y z) = concat (concat x y) z
+      | nil, _, _ => idp
+      | cons x l, nil, nil =>
+        \let
+          | A => rewrite {2} (concatNilR l) (idp {_} {concat (concat l nil) nil})
+        \in pmap (cons x) A
+      | cons x l, nil, cons x1 l1 =>
+        \let
+          | A => rewriteI {2} (concatNilR l) (idp {_} {concat l (cons x1 l1)})
+        \in pmap (cons x) A
+      | cons x l, cons x1 l1, nil =>
+        \let
+          | A => idp {_} {concat l (cons x1 (concat l1 nil))}
+          | B => rewrite {3} (concatNilR l1) A
+          | C => concatNilR (concat l (cons x1 l1))
+        \in pmap (cons x) (B *> C)
+      | cons x l, cons x1 l1, l2 =>
+        \let
+          | A => idp {_} {concat l (cons x1 (concat l1 l2))}
+          | B => A *> (concatAssoc l (cons x1 l1) l2)
+        \in pmap (cons x) B
+
     \func concatComm {A : \Type}
                      (x y : ListedFiniteSet A)
-      : concat x y = concat y x
-      | nil, nil => idp
-      | nil, cons x l => pmap (cons x) (concatNilR l)
-      | cons x l, nil => pmap (cons x) (concatNilL l)
-      | cons x l, cons x' l' =>
-        \let
-          | A => idp {_} {cons x (concat l (cons x' l'))}
-          | B => rewriteI {3} (concatComm l (cons x' l')) A
-          | C => B *> (path (coml x x' (concat l' l)))
-          | D => rewrite {2} (concatComm l l') C
-          | E => rewrite (concatComm l (cons x l')) C
-        \in {?}
-      \where {
-        \func help {A : \Type}
-                   (x : A)
-                   (l l' : ListedFiniteSet A)
-          : concat l (cons x l') = concat l' (cons x l)
-          | x, nil, nil => idp
-          | x, nil, cons a l => {?}
-          | x, cons a l, nil => {?}
-          | x, cons a l, cons a' l' => {?}
-      }
+      : concat x y = concat y x =>
+      ListedFiniteSetInduction (\lam a => concat a y = concat y a)
+                               (concatNilR y)
+                               (\lam a' l' p =>
+                                   \let
+                                     | A => (pmap (cons a') p) *> (concatCons a' (concat y l'))
+                                     | B => A *> (inv (concatAssoc y l' (cons a' nil)))
+                                     | C => rewrite (concatCons a' l') B
+                                   \in C)
+                               (\lam a' l' p => pathOver (Path.inProp _ _))
+                               (\lam a' l' p p' => pathOver (Path.inProp _ _))
+                               x
   }
 
 \func FiniteSet~ListedFiniteSet {X : \Type}
@@ -334,8 +366,8 @@
   | B => ListedFiniteSet X
   | f => f'
   | ret => ret'
-  | ret_f => {?}
-  | f_sec => {?}
+  | ret_f => ret_f'
+  | f_sec => f_sec'
   \where {
     \func f' {X : \Type}
              (s : FiniteSet X)
@@ -346,7 +378,7 @@
       | nl x i => idp {_} {f' x} @ i
       | nr x i => concat.concatNilL (f' x) @ i
       | idem x i => dupl x nil i
-      | assoc x y z i => {?}
+      | assoc x y z i => concat.concatAssoc (f' x) (f' y) (f' z) @ i
       | comm x y i => concat.concatComm (f' x) (f' y) @ i
 
     \func ret' {X : \Type}
@@ -354,6 +386,78 @@
       : FiniteSet X
       | nil => empty
       | cons x l => union (singleton x) (ret' l)
-      | dupl a l i => {?}
-      | coml a b l i => {?}
+      | dupl a l i =>
+        \let
+          | A => path (assoc (singleton a) (singleton a) (ret' l))
+          | B => transport (\lam x => union (singleton a) (union (singleton a) (ret' l)) = union x (ret' l)) (path (idem a)) A
+        \in B @ i
+      | coml a b l i =>
+        \let
+          | A => path (assoc (singleton a) (singleton b) (ret' l))
+          | B => (path (comm (singleton a) (singleton b)))
+          | C => transport (\lam x => union (singleton a) (union (singleton b) (ret' l)) = union x (ret' l)) B A
+          | D => inv (path (assoc (singleton b) (singleton a) (ret' l)))
+        \in (C *> D) @ i
+
+    \func ret_f' {A : \Type}
+                 (x : FiniteSet A)
+      : ret' (f' x) = x
+      | empty => idp
+      | singleton x => path (nr (singleton x))
+      | union s1 s2 =>
+        \let
+          | A => help (f' s1) (f' s2)
+          | B => rewriteI (ret_f' s1) A
+          | C => rewriteI (ret_f' s2) B
+        \in C
+      \where
+        \func help {A : \Type}
+                   (x y : ListedFiniteSet A)
+          : ret' (concat x y) = union (ret' x) (ret' y) =>
+          ListedFiniteSetInduction (\lam a => ret' (concat a y) = union (ret' a) (ret' y))
+                                   (inv (path (nl (ret' y))))
+                                   (\lam a' l' p =>
+                                       \let
+                                         | A => pmap (union (singleton a')) p
+                                         | B => path (assoc (singleton a') (ret' l') (ret' y))
+                                         | C => A *> B
+                                       \in C)
+                                   (\lam a' l' p => pathOver (Path.inProp _ _))
+                                   (\lam a' l' p p' => pathOver (Path.inProp _ _))
+                                   x
+
+    \func f_sec' {A : \Type}
+                 (x : ListedFiniteSet A)
+      : f' (ret' x) = x
+      | nil => idp
+      | cons x l => pmap (cons x) (f_sec' l)
   }
+
+\func decidableEq->decidableMembership {A : DecSet}
+                                       (S : FiniteSet A)
+                                       (x : A)
+  : Dec (member x S)
+  | empty, x => no (\lam x => x)
+  | singleton x, x1 => \case decideEq x1 x \with {
+    | yes e => yes (inP e)
+    | no n => no (\lam r => \case r \with {
+      | inP a => n a
+    })
+  }
+  | union s1 s2, x => \case decidableEq->decidableMembership s1 x, decidableEq->decidableMembership s2 x \with {
+    | yes e1, yes e2 => yes (byLeft e1)
+    | yes e, no n => yes (byLeft e)
+    | no n, yes e => yes (byRight e)
+    | no n1, no n2 => no (\lam r => \case r \with {
+      | byLeft a => n1 a
+      | byRight b => n2 b
+    })
+  }
+
+\func memberBool {A : DecSet}
+                 (x : A)
+                 (s : ListedFiniteSet A)
+  : Bool => \case decidableEq->decidableMembership (rewrite (QEquiv-to-= (FiniteSet~ListedFiniteSet)) s) x \with {
+  | yes e => true
+  | no n => false
+}
